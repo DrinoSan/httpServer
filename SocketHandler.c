@@ -1,16 +1,17 @@
 #include <assert.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
 #include <errno.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
 // Net
-#include <sys/socket.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #include "SocketHandler.h"
 
-void socketHandler_create( SocketHandler_t* socketHandler, int domain, int type, int protocol )
+void socketHandler_create( SocketHandler_t* socketHandler, int domain, int type,
+                           int protocol )
 {
    socketHandler->socketFD = socket( domain, type, protocol );
    assert( socketHandler->socketFD != -1 );
@@ -34,25 +35,27 @@ void socketHandler_init( SocketHandler_t* socketHandler, const char* address,
    if ( setsockopt( socketHandler->socketFD, SOL_SOCKET, SO_REUSEADDR, &yes,
                     sizeof( int ) ) == -1 )
    {
+      perror( "Setting socketopt failed" );
       assert( false );
    }
 
    // Bind the socket.
    struct sockaddr_in addr;
    memset( &addr, 0, sizeof( addr ) );
-   addr.sin_family = AF_INET;
-   addr.sin_port   = htons( port );
+   addr.sin_family = AF_INET; // IPv4
+   addr.sin_port   = htons( port ); // Need to convert port to network byte order
 
    if ( strlen( address ) == 0 )
    {
+      // If address is not set we listen to any interface
       addr.sin_addr.s_addr = INADDR_ANY;
    }
    else
    {
-      // inet_addr returns INADDR_NONE on error.
-      addr.sin_addr.s_addr = inet_addr( address );
-      if ( addr.sin_addr.s_addr == INADDR_NONE )
+      // If a address is provided to use we set it up here
+      if( inet_pton( AF_INET, address, &( addr.sin_addr ) ) != 1 )
       {
+         perror( "Address is invalid" );
          assert( false );
       }
    }
@@ -60,12 +63,14 @@ void socketHandler_init( SocketHandler_t* socketHandler, const char* address,
    if ( bind( socketHandler->socketFD, ( struct sockaddr* ) &addr,
               sizeof( addr ) ) == -1 )
    {
+      perror( "Binding to socket failed" );
       assert( false );
    }
 
    // Start listening on the socket.
    if ( listen( socketHandler->socketFD, backlog ) == -1 )
    {
+      perror( "Listetning failed" );
       assert( false );
    }
 
@@ -81,7 +86,8 @@ int32_t socketHandler_acceptConnection( SocketHandler_t* socketHandler )
                                              ( struct sockaddr* ) &clientAddr, &clientLen );
    if ( clientSocket == -1 )
    {
-      printf( "Failed to accept connection: <%s>\n", strerror( errno ) );
+      perror( "Failed to accept connection" );
+      return -1;
    }
 
    return clientSocket;
@@ -99,9 +105,11 @@ void socketHandler_closeSocket( SocketHandler_t* socketHandler )
 
 // Reaading from socket with hardcoded timeout
 // Function can throw
-//int32_t socketHandler_readFromSocket( SocketHandler_t* socketHandler, Connection_t* conn )
+// int32_t socketHandler_readFromSocket( SocketHandler_t* socketHandler,
+// Connection_t* conn )
 //{
 //   return 1231;
 //}
 //
-//void socketHandler_writeToSocket( SocketHandler_t* Connection_t* conn, const char* data ) {}
+// void socketHandler_writeToSocket( SocketHandler_t* Connection_t* conn, const
+// char* data ) {}
