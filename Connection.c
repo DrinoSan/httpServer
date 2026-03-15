@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "Connection.h"
 
@@ -19,6 +20,7 @@ Connection_t* connection_create_heap( int32_t fd )
 //------------------------------------------------------------------------------
 void connection_destroy( Connection_t* con )
 {
-   printf( "Freeing Connection if FD %d\n", con->fd );
+   printf( "Freeing Connection if FD %d and closing socket\n", con->fd );
+   close( con->fd );
    free( con );
 }

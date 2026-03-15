@@ -142,7 +142,6 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
          {
             // Timeout - Client sleeps or is bad. Timout register is done at
             // Set when state changes to CONN_READING_BODY
-            close( con->fd );
             connection_destroy( con );
             continue;
          }
@@ -156,7 +155,6 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
             if ( bytes_read == 0 )
             {
                // Client disconnected — remove from kqueue and close
-               close( con->fd );
                connection_destroy( con );
                continue;
             }
@@ -164,7 +162,6 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
             {
                if ( errno != EAGAIN )
                {
-                  close( con->fd );
                   connection_destroy( con );
                   continue;
                }
@@ -243,7 +240,6 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
             const char* response =
                 "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
             send( con->fd, response, strlen( response ), 0 );
-            close( con->fd );
             connection_destroy( con );
             continue;
 
@@ -251,7 +247,6 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
             //    http_request_find_header( &con->request, "connection" );
             //if ( conn_header != NULL && strcmp( conn_header, "close" ) == 0 )
             //{
-            //   close( con->fd );
             //   connection_destroy( con );
             //   continue;
             //}
@@ -269,6 +264,4 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
          }
       }
    }
-
-   // Kevent handling
 }
