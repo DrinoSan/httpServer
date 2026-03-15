@@ -7,9 +7,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "Connection.h"
+#include "HttpParser.h"
 #include "Server.h"
-
-#define BUFFER_SIZE 8192
 
 //======================PRIVATE INTERFACE DECLARATION==========================
 void server_setup_worker( Server_t* server );
@@ -56,12 +56,15 @@ void server_start( Server_t* server )
              flags | O_NONBLOCK );   // Set non-blocking so recv/send never
                                      // block the worker's event loop
 
+      // Here i need to setup the connection
+      Connection_t* connection = connection_create_heap( clientFD );
+
       // Only the main thread is accesing next_worker so we safe
       int32_t worker_idx  = server->next_worker;
       server->next_worker = ( server->next_worker + 1 ) % NUM_WORKERS;
 
       struct kevent change;
-      EV_SET( &change, clientFD, EVFILT_READ, EV_ADD, 0, 0, NULL );
+      EV_SET( &change, clientFD, EVFILT_READ, EV_ADD, 0, 0, connection );
       kevent( server->worker_kqueue_fds[ worker_idx ], &change, 1, NULL, 0,
               NULL );
 
@@ -118,7 +121,6 @@ void server_setup_worker( Server_t* server )
 //------------------------------------------------------------------------------
 void* server_start_worker_event_loop( void* kqueueFD_ )
 {
-   char buffer[ BUFFER_SIZE + 1 ];
    // I need to cast it back into 32bit from a void*
    int32_t kqueueFD = ( int32_t ) ( intptr_t ) kqueueFD_;
 
@@ -127,31 +129,144 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
    {
       int n = kevent( kqueueFD, NULL, 0, events, 64, NULL );
       printf( "n from k events %d\n", n );
-      memset( buffer, 0, BUFFER_SIZE + 1 );
 
       for ( int32_t i = 0; i < n; i++ )
       {
          // Handle new client connection
-         printf( "Got new Socket/client connection for socket %lu\n",
-                 events[ i ].ident );
+         Connection_t* con = ( Connection_t* ) events[ i ].udata;
+         printf(
+             "Got new Socket/client connection for socket %lu udata fd %d\n",
+             events[ i ].ident, con->fd );
 
-         int32_t bytes_read = recv( events[ i ].ident, buffer, BUFFER_SIZE, 0 );
-         if ( bytes_read == 0 )
+         if ( events[ i ].filter == EVFILT_TIMER )
          {
-            // Client disconnected — remove from kqueue and close
-            close( events[ i ].ident );
+            // Timeout - Client sleeps or is bad. Timout register is done at
+            // Set when state changes to CONN_READING_BODY
+            close( con->fd );
+            connection_destroy( con );
+            continue;
          }
-         else if ( bytes_read < 0 )
+         else if ( events[ i ].filter == EVFILT_READ )
          {
-            if ( errno != EAGAIN )
+            // 10 to check if i really fill the same buffer should be
+            // BUFFER_SIZE - con->bytes_read to avoid buffer overflow
+            int32_t bytes_read =
+                recv( con->fd, con->buffer + con->bytes_read, 10, 0 );
+
+            if ( bytes_read == 0 )
             {
-               close( events[ i ].ident );
+               // Client disconnected — remove from kqueue and close
+               close( con->fd );
+               connection_destroy( con );
+               continue;
             }
-            // EAGAIN just means no data right now, ignore
+            else if ( bytes_read < 0 )
+            {
+               if ( errno != EAGAIN )
+               {
+                  close( con->fd );
+                  connection_destroy( con );
+                  continue;
+               }
+
+               // EAGAIN just means no data right now, ignore
+               continue;
+            }
+
+            con->bytes_read = con->bytes_read + bytes_read;
+
+            if ( con->state == CONN_READING_HEADERS )
+            {
+               char* end = strstr( con->buffer, "\r\n\r\n" );
+               if ( end != NULL )
+               {
+                  // At this point i know i read all headers now content can be
+                  // read
+                  con->header_len = ( end - con->buffer ) + 4;
+
+                  // Need to parse the headers
+                  http_parser_parse_headers( con->buffer, con->header_len,
+                                             &con->request );
+
+                  const char* length_value = http_request_find_header(
+                      &con->request, "content-length" );
+                  // If its a GET request or no content_length provided we dont
+                  // need to check the body
+                  if ( strcmp( con->request.method, "GET" ) != 0 &&
+                       length_value != NULL )
+                  {
+                     con->request.content_length = atoi( length_value );
+                     con->state                  = CONN_READING_BODY;
+
+                     int32_t body_received = con->bytes_read - con->header_len;
+                     if ( body_received >= con->request.content_length )
+                     {
+                        // Full request received — handle it
+                        con->state = CONN_SENDING_RESPONSE;
+                     }
+                     else
+                     {
+                        // I did not get the full body so i can set a timmer for
+                        // further recv calls
+                        struct kevent timer;
+                        EV_SET( &timer, con->fd, EVFILT_TIMER,
+                                EV_ADD | EV_ONESHOT, 0, 10000, con );
+                        kevent( kqueueFD, &timer, 1, NULL, 0, NULL );
+                     }
+                  }
+                  else
+                  {
+                     // No body expected — request is complete
+                     con->state = CONN_SENDING_RESPONSE;
+                  }
+               }
+            }
+            else if ( con->state == CONN_READING_BODY )
+            {
+               int32_t body_received = con->bytes_read - con->header_len;
+               if ( body_received >= con->request.content_length )
+               {
+                  // Full request received — handle it
+                  con->state = CONN_SENDING_RESPONSE;
+                  struct kevent timer;
+                  EV_SET( &timer, con->fd, EVFILT_TIMER, EV_DELETE, 0, 0,
+                          NULL );
+                  kevent( kqueueFD, &timer, 1, NULL, 0, NULL );
+               }
+            }
          }
 
-         printf( "Read bytes %d\n", bytes_read );
-         printf( "Buffer\n\t%s\n", buffer );
+         if ( con->state == CONN_SENDING_RESPONSE )
+         {
+            printf( "Read bytes %d\n", con->bytes_read );
+            printf( "Buffer\n\t%s\n", con->buffer );
+            const char* response =
+                "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
+            send( con->fd, response, strlen( response ), 0 );
+            close( con->fd );
+            connection_destroy( con );
+            continue;
+
+            //const char* conn_header =
+            //    http_request_find_header( &con->request, "connection" );
+            //if ( conn_header != NULL && strcmp( conn_header, "close" ) == 0 )
+            //{
+            //   close( con->fd );
+            //   connection_destroy( con );
+            //   continue;
+            //}
+
+            //// Keep-alive: reset for next request
+            //con->state      = CONN_READING_HEADERS;
+            //con->bytes_read = 0;
+            //con->header_len = 0;
+            //memset( &con->request, 0, sizeof( HttpRequest_t ) );
+            //memset( con->buffer, 0, BUFFER_SIZE );
+
+            //struct kevent timer;
+            //EV_SET( &timer, con->fd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL );
+            //kevent( kqueueFD, &timer, 1, NULL, 0, NULL );
+         }
       }
    }
 
