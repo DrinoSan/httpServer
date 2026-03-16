@@ -177,47 +177,51 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
             if ( con->state == CONN_READING_HEADERS )
             {
                char* end = strstr( con->buffer, "\r\n\r\n" );
-               if ( end != NULL )
+               if ( end == NULL )
                {
-                  // At this point i know i read all headers now content can be
-                  // read
-                  con->header_len = ( end - con->buffer ) + 4;
+                  // Did not receive the full headers
+                  continue;
+               }
 
-                  // Need to parse the headers
-                  http_parser_parse_headers( con->buffer, con->header_len,
-                                             &con->request );
+               // At this point i know i read all headers now content can be
+               // read
+               con->header_len = ( end - con->buffer ) + 4;
 
-                  const char* length_value = http_request_find_header(
-                      &con->request, "content-length" );
-                  // If its a GET request or no content_length provided we dont
-                  // need to check the body
-                  if ( strcmp( con->request.method, "GET" ) != 0 &&
-                       length_value != NULL )
+               // Need to parse the headers
+               http_parser_parse_headers( con->buffer, con->header_len,
+                                          &con->request );
+
+               const char* length_value =
+                   http_request_find_header( &con->request, "content-length" );
+               // If its a GET request or no content_length provided we dont
+               // need to check the body
+               if ( strcmp( con->request.method, "GET" ) != 0 &&
+                    length_value != NULL )
+               {
+                  con->request.content_length = atoi( length_value );
+                  con->state                  = CONN_READING_BODY;
+
+                  int32_t body_received = con->bytes_read - con->header_len;
+                  if ( body_received >= con->request.content_length )
                   {
-                     con->request.content_length = atoi( length_value );
-                     con->state                  = CONN_READING_BODY;
-
-                     int32_t body_received = con->bytes_read - con->header_len;
-                     if ( body_received >= con->request.content_length )
-                     {
-                        // Full request received — handle it
-                        con->state = CONN_SENDING_RESPONSE;
-                     }
-                     else
-                     {
-                        // I did not get the full body so i can set a timmer for
-                        // further recv calls
-                        struct kevent timer;
-                        EV_SET( &timer, con->fd, EVFILT_TIMER,
-                                EV_ADD | EV_ONESHOT, 0, 10000, con );
-                        kevent( kqueueFD, &timer, 1, NULL, 0, NULL );
-                     }
+                     // Full request received — handle it
+                     con->state = CONN_SENDING_RESPONSE;
                   }
                   else
                   {
-                     // No body expected — request is complete
-                     con->state = CONN_SENDING_RESPONSE;
+                     // I did not get the full body so i can set a timmer for
+                     // further recv calls
+                     // This is for clients fall asleep or other bad stuff
+                     struct kevent timer;
+                     EV_SET( &timer, con->fd, EVFILT_TIMER, EV_ADD | EV_ONESHOT,
+                             0, 10000, con );
+                     kevent( kqueueFD, &timer, 1, NULL, 0, NULL );
                   }
+               }
+               else
+               {
+                  // No body expected — request is complete
+                  con->state = CONN_SENDING_RESPONSE;
                }
             }
             else if ( con->state == CONN_READING_BODY )
@@ -228,8 +232,6 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
                   // Full request received — handle it
                   con->state = CONN_SENDING_RESPONSE;
 
-                  // I am setting a 10 seconds timer to handle clients which
-                  // fell asleep or some other stuff
                   struct kevent timer;
                   EV_SET( &timer, con->fd, EVFILT_TIMER, EV_DELETE, 0, 0,
                           NULL );

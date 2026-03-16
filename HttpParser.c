@@ -4,6 +4,7 @@
 
 #include "HttpParser.h"
 
+//------------------------------------------------------------------------------
 void http_parser_parse_headers( char* buffer, int32_t header_len,
                                 HttpRequest_t* request )
 {
@@ -11,6 +12,7 @@ void http_parser_parse_headers( char* buffer, int32_t header_len,
    const char* headers_end = buffer + header_len - 4;
 
    // parsing the request line
+   // If someone has a path longer than 255 then fuck that
    sscanf( buffer, "%7s %255s %15s", request->method, request->path,
            request->version );
 
@@ -24,6 +26,14 @@ void http_parser_parse_headers( char* buffer, int32_t header_len,
       // value is from colon+2 to eol (skip ": ")
       char* colon = memchr( line, ':', headers_end - line );
       char* eol   = strstr( line, "\r\n" );
+
+      if ( colon == NULL || colon > eol )
+      {
+         // Invalid header line — no colon, skip it
+         line = eol + 2;
+         printf( "Header line invalid!!\n");
+         continue;
+      }
 
       // header name handling
       int32_t name_len = colon - line;
