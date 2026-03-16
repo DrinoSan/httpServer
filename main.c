@@ -9,6 +9,5 @@ int main()
 
    server_start( &server );
 
-
    server_destroy( &server );
 }

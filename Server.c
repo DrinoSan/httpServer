@@ -63,6 +63,7 @@ void server_start( Server_t* server )
       int32_t worker_idx  = server->next_worker;
       server->next_worker = ( server->next_worker + 1 ) % NUM_WORKERS;
 
+      // Registering the new client in our kqueue
       struct kevent change;
       EV_SET( &change, clientFD, EVFILT_READ, EV_ADD, 0, 0, connection );
       kevent( server->worker_kqueue_fds[ worker_idx ], &change, 1, NULL, 0,
@@ -124,10 +125,11 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
    // I need to cast it back into 32bit from a void*
    int32_t kqueueFD = ( int32_t ) ( intptr_t ) kqueueFD_;
 
-   struct kevent events[ 64 ];
+   const int32_t num_events = 64;
+   struct kevent events[ num_events ];
    while ( true )
    {
-      int n = kevent( kqueueFD, NULL, 0, events, 64, NULL );
+      int n = kevent( kqueueFD, NULL, 0, events, num_events, NULL );
       printf( "n from k events %d\n", n );
 
       for ( int32_t i = 0; i < n; i++ )
@@ -225,6 +227,9 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
                {
                   // Full request received — handle it
                   con->state = CONN_SENDING_RESPONSE;
+
+                  // I am setting a 10 seconds timer to handle clients which
+                  // fell asleep or some other stuff
                   struct kevent timer;
                   EV_SET( &timer, con->fd, EVFILT_TIMER, EV_DELETE, 0, 0,
                           NULL );
@@ -243,24 +248,24 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
             connection_destroy( con );
             continue;
 
-            //const char* conn_header =
-            //    http_request_find_header( &con->request, "connection" );
-            //if ( conn_header != NULL && strcmp( conn_header, "close" ) == 0 )
+            // const char* conn_header =
+            //     http_request_find_header( &con->request, "connection" );
+            // if ( conn_header != NULL && strcmp( conn_header, "close" ) == 0 )
             //{
-            //   connection_destroy( con );
-            //   continue;
-            //}
+            //    connection_destroy( con );
+            //    continue;
+            // }
 
             //// Keep-alive: reset for next request
-            //con->state      = CONN_READING_HEADERS;
-            //con->bytes_read = 0;
-            //con->header_len = 0;
-            //memset( &con->request, 0, sizeof( HttpRequest_t ) );
-            //memset( con->buffer, 0, BUFFER_SIZE );
+            // con->state      = CONN_READING_HEADERS;
+            // con->bytes_read = 0;
+            // con->header_len = 0;
+            // memset( &con->request, 0, sizeof( HttpRequest_t ) );
+            // memset( con->buffer, 0, BUFFER_SIZE );
 
-            //struct kevent timer;
-            //EV_SET( &timer, con->fd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL );
-            //kevent( kqueueFD, &timer, 1, NULL, 0, NULL );
+            // struct kevent timer;
+            // EV_SET( &timer, con->fd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL );
+            // kevent( kqueueFD, &timer, 1, NULL, 0, NULL );
          }
       }
    }

@@ -10,6 +10,7 @@
 
 #include "SocketHandler.h"
 
+//------------------------------------------------------------------------------
 void socketHandler_create( SocketHandler_t* socketHandler, int domain, int type,
                            int protocol )
 {
@@ -19,12 +20,14 @@ void socketHandler_create( SocketHandler_t* socketHandler, int domain, int type,
    printf( "Server required socketFD <%d>\n", socketHandler->socketFD );
 }
 
+//------------------------------------------------------------------------------
 void socketHandler_destroy( SocketHandler_t* socketHandler )
 {
    printf( "Destroying SocketHandler\n" );
    socketHandler_closeSocket( socketHandler );
 }
 
+//------------------------------------------------------------------------------
 // Initialize the socket: bind to an address and port, then start listening.
 // If the address is empty, it will bind to all interfaces.
 void socketHandler_init( SocketHandler_t* socketHandler, const char* address,
@@ -77,6 +80,7 @@ void socketHandler_init( SocketHandler_t* socketHandler, const char* address,
    printf( "Socket bound and listening on port <%d>\n", port );
 }
 
+//------------------------------------------------------------------------------
 // Accept a new connection and return the new socket file descriptor.
 int32_t socketHandler_acceptConnection( SocketHandler_t* socketHandler )
 {
@@ -93,6 +97,7 @@ int32_t socketHandler_acceptConnection( SocketHandler_t* socketHandler )
    return clientSocket;
 }
 
+//------------------------------------------------------------------------------
 // Close the listening socket.
 void socketHandler_closeSocket( SocketHandler_t* socketHandler )
 {
