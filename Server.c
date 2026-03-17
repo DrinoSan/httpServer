@@ -10,6 +10,8 @@
 #include "Connection.h"
 #include "HttpParser.h"
 #include "Server.h"
+#include "Log.h"
+
 
 //======================PRIVATE INTERFACE DECLARATION==========================
 void server_setup_worker( Server_t* server );
@@ -41,7 +43,7 @@ void server_create( Server_t* server )
 //------------------------------------------------------------------------------
 void server_destroy( Server_t* server )
 {
-   printf( "Destroying Server\n" );
+   LOG_INFO( "Destroying Server" );
    socketHandler_destroy( &server->socketHandler );
 }
 
@@ -69,7 +71,7 @@ void server_start( Server_t* server )
       kevent( server->worker_kqueue_fds[ worker_idx ], &change, 1, NULL, 0,
               NULL );
 
-      printf( "Received Client Socket <%d> Adding it to KQueue of worker %d\n",
+      LOG_INFO( "Received Client Socket <%d> Adding it to KQueue of worker %d",
               clientFD, worker_idx );
    }
 
@@ -103,7 +105,7 @@ void server_setup_worker( Server_t* server )
 
    for ( int32_t i = 0; i < NUM_WORKERS; i++ )
    {
-      printf( "Worker %d aquired kqueue fd %d\n", i,
+      LOG_INFO( "Worker %d aquired kqueue fd %d", i,
               server->worker_kqueue_fds[ i ] );
    }
 
@@ -130,7 +132,7 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
    while ( true )
    {
       int n = kevent( kqueueFD, NULL, 0, events, num_events, NULL );
-      printf( "n from k events %d\n", n );
+      LOG_INFO("n from k events %d", n );
 
       for ( int32_t i = 0; i < n; i++ )
       {
@@ -242,8 +244,8 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
 
          if ( con->state == CONN_SENDING_RESPONSE )
          {
-            printf( "Read bytes %d\n", con->bytes_read );
-            printf( "Buffer\n\t%s\n", con->buffer );
+            LOG_INFO("Read bytes %d", con->bytes_read );
+            LOG_INFO("Buffer\n\t%s", con->buffer );
             const char* response =
                 "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
             send( con->fd, response, strlen( response ), 0 );

@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "HttpParser.h"
+#include "Log.h"
 
 //------------------------------------------------------------------------------
 void http_parser_parse_headers( char* buffer, int32_t header_len,
@@ -31,7 +32,7 @@ void http_parser_parse_headers( char* buffer, int32_t header_len,
       {
          // Invalid header line — no colon, skip it
          line = eol + 2;
-         printf( "Header line invalid!!\n");
+         LOG_INFO("Header line invalid!!");
          continue;
       }
 

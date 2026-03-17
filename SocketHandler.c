@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "SocketHandler.h"
+#include "Log.h"
 
 //------------------------------------------------------------------------------
 void socketHandler_create( SocketHandler_t* socketHandler, int domain, int type,
@@ -17,13 +18,13 @@ void socketHandler_create( SocketHandler_t* socketHandler, int domain, int type,
    socketHandler->socketFD = socket( domain, type, protocol );
    assert( socketHandler->socketFD != -1 );
 
-   printf( "Server required socketFD <%d>\n", socketHandler->socketFD );
+   LOG_INFO("Server required socketFD <%d>", socketHandler->socketFD );
 }
 
 //------------------------------------------------------------------------------
 void socketHandler_destroy( SocketHandler_t* socketHandler )
 {
-   printf( "Destroying SocketHandler\n" );
+   LOG_INFO("Destroying SocketHandler" );
    socketHandler_closeSocket( socketHandler );
 }
 
@@ -77,7 +78,7 @@ void socketHandler_init( SocketHandler_t* socketHandler, const char* address,
       assert( false );
    }
 
-   printf( "Socket bound and listening on port <%d>\n", port );
+   LOG_INFO("Socket bound and listening on port <%d>", port );
 }
 
 //------------------------------------------------------------------------------
