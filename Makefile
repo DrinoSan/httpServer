@@ -3,7 +3,7 @@ CFLAGS   = -Wall -Wextra -std=c11
 LDFLAGS  = -lpthread
 
 TARGET   = httpServer
-SRCS     = main.c Server.c SocketHandler.c Connection.c HttpParser.c HttpRequest.c
+SRCS     = main.c Server.c SocketHandler.c Connection.c HttpParser.c HttpRequest.c Log.c
 OBJS     = $(SRCS:.c=.o)
 
 all: $(TARGET)
