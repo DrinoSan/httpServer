@@ -1,6 +1,7 @@
 #pragma once
 
 #include "HttpRequest.h"
+#include "HttpResponse.h"
 
 #define BUFFER_SIZE 8192
 //------------------------------------------------------------------------------
@@ -26,6 +27,7 @@ typedef struct
    int32_t           header_len;   // offset where body starts (after \r\n\r\n)
    int32_t           content_length;
    HttpRequest_t     request;
+   HttpResponse_t    response;
    ConnectionState_t state;
 } Connection_t;
 
