@@ -8,12 +8,18 @@
 // Example of freeElem for char*
 void string_free( void** elem )
 {
-   // i dereference the elem pointer. This gives me the the value inside data which itself is a pointer to the heap allocated string
-   // elem pointer is provided by sand_list_free
+   // clang-format off
+   // i dereference the elem pointer. This gives me the the value inside data
+   // which itself is a pointer to the heap allocated string elem pointer is
+   // provided by sand_list_free
+   //
+   // With other words char** says its a pointer to a
+   // pointer meaning elem -> field in data -> heap where string lives
+   // the dereference give me the value of elem it points to which is field in
+   // data which is the address of the heap
+   // clang-format on
    free( *( char** ) elem );
 }
-
-typedef void ( *freeFN )( void* elem );
 
 // Implementation of list
 typedef struct
