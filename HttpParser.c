@@ -53,6 +53,7 @@ void http_parser_parse_headers( char* buffer, int32_t header_len,
       request->headers[ idx ].value[ value_len ] = '\0';
 
       line = eol + 2;   // next line
+      idx++;
    }
 
    request->header_count = idx + 1;
