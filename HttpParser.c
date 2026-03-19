@@ -6,7 +6,7 @@
 #include "Log.h"
 
 //------------------------------------------------------------------------------
-void http_parser_parse_headers( char* buffer, int32_t header_len,
+ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
                                 HttpRequest_t* request )
 {
    // -4 because i dont need the \r\n\r\n
@@ -33,7 +33,7 @@ void http_parser_parse_headers( char* buffer, int32_t header_len,
          // Invalid header line — no colon, skip it
          line = eol + 2;
          LOG_INFO("Header line invalid!!");
-         continue;
+         return PARSE_ERROR_INVALID_HEADERS;
       }
 
       // header name handling
@@ -57,4 +57,6 @@ void http_parser_parse_headers( char* buffer, int32_t header_len,
    }
 
    request->header_count = idx + 1;
+
+   return PARSE_OK;
 }

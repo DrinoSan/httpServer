@@ -199,8 +199,20 @@ void* server_start_worker_event_loop( void* args )
                con->header_len = ( end - con->buffer ) + 4;
 
                // Need to parse the headers
-               http_parser_parse_headers( con->buffer, con->header_len,
+               ParseResult_t result = http_parser_parse_headers( con->buffer, con->header_len,
                                           &con->request );
+
+               if( result != PARSE_OK )
+               {
+                  Sand_string_t buf;
+                  sand_string_create( &buf );
+                  con->response.status_code = 400;
+                  strcpy( con->response.status_text, "Bad Request" );
+                  http_response_serialize( &con->response, &buf );
+                  send( con->fd, buf.data, buf.size, 0 );
+                  sand_string_destroy( &buf );
+                  connection_destroy( con );
+               }
 
                const char* length_value =
                    http_request_find_header( &con->request, "content-length" );
@@ -257,15 +269,7 @@ void* server_start_worker_event_loop( void* args )
             RouteHandler_t handler = router_find_route(
                 &server->router, con->request.method, con->request.path );
 
-            if ( handler == NULL )
-            {
-               const char* response =
-                   "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
-               send( con->fd, response, strlen( response ), 0 );
-               connection_destroy( con );
-               continue;
-            }
-
+            // If no route was registered the router returns handle_404_not_found
             handler( con );
             Sand_string_t buf;
             sand_string_create( &buf );

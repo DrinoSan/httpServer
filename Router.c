@@ -3,6 +3,10 @@
 #include "Log.h"
 #include "Router.h"
 
+//------------------------------------------------------------------------------
+void handle_404_not_found( Connection_t* con );
+
+//------------------------------------------------------------------------------
 void router_add_route( Router_t* router, const char* method, const char* path,
                        RouteHandler_t handler )
 {
@@ -41,6 +45,7 @@ void router_add_route( Router_t* router, const char* method, const char* path,
    router->count_routes++;
 }
 
+//------------------------------------------------------------------------------
 RouteHandler_t router_find_route( Router_t* router, const char* method,
                                   const char* path )
 {
@@ -54,5 +59,13 @@ RouteHandler_t router_find_route( Router_t* router, const char* method,
       }
    }
 
-   return NULL;
+   return handle_404_not_found;
+}
+
+//------------------------------------------------------------------------------
+void handle_404_not_found( Connection_t* con )
+{
+   con->response.status_code = 404;
+   strcpy( con->response.status_text, "Not Found" );
+   con->response.body = "<h1>Sorry, the page you are asking for is not registered</h1>";
 }
