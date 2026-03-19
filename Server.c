@@ -163,7 +163,7 @@ void* server_start_worker_event_loop( void* args )
             // 10 to check if i really fill the same buffer should be
             // BUFFER_SIZE - con->bytes_read to avoid buffer overflow
             int32_t bytes_read =
-                recv( con->fd, con->buffer + con->bytes_read, 10, 0 );
+                recv( con->fd, con->buffer + con->bytes_read, BUFFER_SIZE - con->bytes_read, 0 );
 
             if ( bytes_read == 0 )
             {
@@ -273,6 +273,7 @@ void* server_start_worker_event_loop( void* args )
             send( con->fd, buf.data, buf.size, 0 );
             LOG_WARN( "BUFFER: %s", buf.data );
             sand_string_destroy( &buf );
+            connection_destroy( con );
             continue;
 
             // const char* conn_header =
