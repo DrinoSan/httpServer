@@ -12,6 +12,7 @@
 #include "Log.h"
 #include "Router.h"
 #include "Server.h"
+#include "Sand_string.h"
 
 //======================PRIVATE INTERFACE DECLARATION==========================
 void server_setup_worker( Server_t* server );
@@ -242,6 +243,7 @@ void* server_start_worker_event_loop( void* args )
                   // Full request received — handle it
                   con->state = CONN_SENDING_RESPONSE;
 
+                  // Removing registered timer for connection
                   struct kevent timer;
                   EV_SET( &timer, con->fd, EVFILT_TIMER, EV_DELETE, 0, 0,
                           NULL );
@@ -261,18 +263,16 @@ void* server_start_worker_event_loop( void* args )
                    "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
                send( con->fd, response, strlen( response ), 0 );
                connection_destroy( con );
-               LOG_WARN( "BODY nothing " );
                continue;
             }
 
             handler( con );
-            char buf[ 512 ];
-            strcpy( buf, "HTTP/1.1 200 OK\r\nContent-Length: 14\r\n\r\n" );
-            strcat( buf, con->response.body );
-
-            send( con->fd, buf, strlen( buf ), 0 );
-
-            connection_destroy( con );
+            Sand_string_t buf;
+            sand_string_create( &buf );
+            http_response_serialize( &con->response, &buf );
+            send( con->fd, buf.data, buf.size, 0 );
+            LOG_WARN( "BUFFER: %s", buf.data );
+            sand_string_destroy( &buf );
             continue;
 
             // const char* conn_header =

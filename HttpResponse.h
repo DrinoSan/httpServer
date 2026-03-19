@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "HttpHeader.h"
+#include "Sand_string.h"
 
 typedef struct
 {
@@ -13,3 +14,4 @@ typedef struct
    int32_t      body_len;
 } HttpResponse_t;
 
+void http_response_serialize( HttpResponse_t* response, Sand_string_t* string );
