@@ -9,15 +9,15 @@
 
 #include "Connection.h"
 #include "HttpParser.h"
-#include "Server.h"
 #include "Log.h"
-
+#include "Router.h"
+#include "Server.h"
 
 //======================PRIVATE INTERFACE DECLARATION==========================
 void server_setup_worker( Server_t* server );
 
 // Thread func
-void* server_start_worker_event_loop( void* kqueueFD_ );
+void* server_start_worker_event_loop( void* workerArgs );
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ void server_start( Server_t* server )
               NULL );
 
       LOG_INFO( "Received Client Socket <%d> Adding it to KQueue of worker %d",
-              clientFD, worker_idx );
+                clientFD, worker_idx );
    }
 
    // Gracefully joining the threads
@@ -106,40 +106,48 @@ void server_setup_worker( Server_t* server )
    for ( int32_t i = 0; i < NUM_WORKERS; i++ )
    {
       LOG_INFO( "Worker %d aquired kqueue fd %d", i,
-              server->worker_kqueue_fds[ i ] );
+                server->worker_kqueue_fds[ i ] );
    }
 
    for ( int32_t i = 0; i < NUM_WORKERS; i++ )
    {
       pthread_t thread;
-      pthread_create(
-          &thread, NULL, server_start_worker_event_loop,
-          ( void* ) ( intptr_t )
-              server->worker_kqueue_fds[ i ] );   // Need to cast to intptr_t to
-                                                  // get a 64bit representation
+
+      WorkerArgs_t* args = &server->worker_args[ i ];
+      args->kqueue_fd    = server->worker_kqueue_fds[ i ];
+      args->server       = server;
+
+      pthread_create( &thread, NULL, server_start_worker_event_loop,
+                      ( void* ) args );
+      //( void* ) ( intptr_t )
+      //    server->worker_kqueue_fds[ i ] );   // Need to cast
+      //    to intptr_t to
+      // get a 64bit representation
       server->server_worker_thread[ i ] = thread;
    }
 }
 
 //------------------------------------------------------------------------------
-void* server_start_worker_event_loop( void* kqueueFD_ )
+void* server_start_worker_event_loop( void* args )
 {
    // I need to cast it back into 32bit from a void*
-   int32_t kqueueFD = ( int32_t ) ( intptr_t ) kqueueFD_;
+   WorkerArgs_t* workerArgs = ( WorkerArgs_t* ) args;
+   // int32_t       kqueueFD   = ( int32_t ) ( intptr_t ) workerArgs->kqueue_fd;
+   int32_t   kqueueFD = workerArgs->kqueue_fd;
+   Server_t* server   = workerArgs->server;
 
    const int32_t num_events = 64;
    struct kevent events[ num_events ];
    while ( true )
    {
       int n = kevent( kqueueFD, NULL, 0, events, num_events, NULL );
-      LOG_INFO("n from k events %d", n );
 
       for ( int32_t i = 0; i < n; i++ )
       {
          // Handle new client connection
          Connection_t* con = ( Connection_t* ) events[ i ].udata;
-         printf(
-             "Got new Socket/client connection for socket %lu udata fd %d\n",
+         LOG_INFO(
+             "Got new Socket/client connection for socket %lu udata fd %d",
              events[ i ].ident, con->fd );
 
          if ( events[ i ].filter == EVFILT_TIMER )
@@ -244,11 +252,26 @@ void* server_start_worker_event_loop( void* kqueueFD_ )
 
          if ( con->state == CONN_SENDING_RESPONSE )
          {
-            LOG_INFO("Read bytes %d", con->bytes_read );
-            LOG_INFO("Buffer\n\t%s", con->buffer );
-            const char* response =
-                "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
-            send( con->fd, response, strlen( response ), 0 );
+            RouteHandler_t handler = router_find_route(
+                &server->router, con->request.method, con->request.path );
+
+            if ( handler == NULL )
+            {
+               const char* response =
+                   "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
+               send( con->fd, response, strlen( response ), 0 );
+               connection_destroy( con );
+               LOG_WARN( "BODY nothing " );
+               continue;
+            }
+
+            handler( con );
+            char buf[ 512 ];
+            strcpy( buf, "HTTP/1.1 200 OK\r\nContent-Length: 14\r\n\r\n" );
+            strcat( buf, con->response.body );
+
+            send( con->fd, buf, strlen( buf ), 0 );
+
             connection_destroy( con );
             continue;
 
