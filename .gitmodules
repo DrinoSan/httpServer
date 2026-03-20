@@ -1,3 +1,6 @@
 [submodule "sandlib"]
 	path = sandlib
 	url = https://github.com/DrinoSan/sandlib.git
+[submodule "unity"]
+	path = unity
+	url = https://github.com/ThrowTheSwitch/Unity.git

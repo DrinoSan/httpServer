@@ -7,7 +7,7 @@
 
 //------------------------------------------------------------------------------
 ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
-                                HttpRequest_t* request )
+                                         HttpRequest_t* request )
 {
    // -4 because i dont need the \r\n\r\n
    const char* headers_end = buffer + header_len - 4;
@@ -32,7 +32,7 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
       {
          // Invalid header line — no colon, skip it
          line = eol + 2;
-         LOG_INFO("Header line invalid!!");
+         LOG_INFO( "Header line invalid!!" );
          return PARSE_ERROR_INVALID_HEADERS;
       }
 
@@ -54,9 +54,8 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
 
       line = eol + 2;   // next line
       idx++;
+      request->header_count += 1;
    }
-
-   request->header_count = idx + 1;
 
    return PARSE_OK;
 }

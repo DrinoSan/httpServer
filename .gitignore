@@ -56,4 +56,8 @@ dkms.conf
 .clang-format
 tags
 httpServer
+tests/test_http_parser
+tests/test_router
+tests/test_http_request
+tests/test_http_response
 Plan.md
