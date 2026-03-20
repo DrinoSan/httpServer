@@ -1,9 +1,10 @@
+#include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 
 #include "HttpParser.h"
+#include "HttpRequest.h"
 #include "Log.h"
 #include "Sand_string.h"
 
@@ -18,6 +19,42 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
    // If someone has a path longer than 255 then fuck that
    sscanf( buffer, "%7s %255s %15s", request->method, request->path,
            request->version );
+
+   // check for unit test test_http11_absolute_form_uri
+   if ( strncmp( request->path, "http://", 7 ) == 0 )
+   {
+      char* authority = request->path + 7;
+      char* slash     = strchr( authority, '/' );
+      if ( slash == NULL )
+      {
+         // No path requested invalid
+         request->path[ 0 ] = '/';
+         request->path[ 1 ] = '\0';
+      }
+      else
+      {
+         int32_t path_len = strlen( slash );
+         memmove( request->path, slash, path_len );
+         request->path[ path_len ] = '\0';
+      }
+   }
+   else if ( strncmp( request->path, "https://", 8 ) == 0 )
+   {
+      char* authority = request->path + 8;
+      char* slash     = strchr( authority, '/' );
+      if ( slash == NULL )
+      {
+         // No path requested invalid
+         request->path[ 0 ] = '/';
+         request->path[ 1 ] = '\0';
+      }
+      else
+      {
+         int32_t path_len = strlen( slash );
+         memmove( request->path, slash, path_len );
+         request->path[ path_len ] = '\0';
+      }
+   }
 
    // Skipping the request line
    const char* line = strstr( buffer, "\r\n" ) + 2;
@@ -64,9 +101,19 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
       idx++;
       request->header_count += 1;
 
-      if( request->header_count >= MAX_HEADERS )
+      if ( request->header_count >= MAX_HEADERS )
       {
          return PARSE_ERROR_TOO_MANY_HEADERS;
+      }
+   }
+
+   // Further checks on headers
+   if ( strcmp( request->version, "HTTP/1.1" ) == 0 )
+   {
+      if ( http_request_find_header( request, "host" ) == NULL )
+      {
+         // Bad Request
+         return PARSE_ERROR_MISSING_HOST;
       }
    }
 

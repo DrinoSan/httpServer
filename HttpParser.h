@@ -9,6 +9,7 @@ typedef enum
    PARSE_ERROR_INVALID_HEADERS,
    PARSE_ERROR_PATH_TOO_LONG,
    PARSE_ERROR_TOO_MANY_HEADERS,   // 431 Request Header
+   PARSE_ERROR_MISSING_HOST,       // 400 Bad Request
 } ParseResult_t;
 
 ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,

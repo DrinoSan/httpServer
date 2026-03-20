@@ -11,11 +11,13 @@
 #include "HttpParser.h"
 #include "Log.h"
 #include "Router.h"
-#include "Server.h"
 #include "Sand_string.h"
+#include "Server.h"
 
 //======================PRIVATE INTERFACE DECLARATION==========================
 void server_setup_worker( Server_t* server );
+void server_handle_parsing_error( Connection_t* con, ParseResult_t result );
+void server_serialize_and_send_response( Connection_t* response );
 
 // Thread func
 void* server_start_worker_event_loop( void* workerArgs );
@@ -162,8 +164,8 @@ void* server_start_worker_event_loop( void* args )
          {
             // 10 to check if i really fill the same buffer should be
             // BUFFER_SIZE - con->bytes_read to avoid buffer overflow
-            int32_t bytes_read =
-                recv( con->fd, con->buffer + con->bytes_read, BUFFER_SIZE - con->bytes_read, 0 );
+            int32_t bytes_read = recv( con->fd, con->buffer + con->bytes_read,
+                                       BUFFER_SIZE - con->bytes_read, 0 );
 
             if ( bytes_read == 0 )
             {
@@ -199,18 +201,12 @@ void* server_start_worker_event_loop( void* args )
                con->header_len = ( end - con->buffer ) + 4;
 
                // Need to parse the headers
-               ParseResult_t result = http_parser_parse_headers( con->buffer, con->header_len,
-                                          &con->request );
+               ParseResult_t result = http_parser_parse_headers(
+                   con->buffer, con->header_len, &con->request );
 
-               if( result != PARSE_OK )
+               if ( result != PARSE_OK )
                {
-                  Sand_string_t buf;
-                  sand_string_create( &buf );
-                  con->response.status_code = 400;
-                  strcpy( con->response.status_text, "Bad Request" );
-                  http_response_serialize( &con->response, &buf );
-                  send( con->fd, buf.data, buf.size, 0 );
-                  sand_string_destroy( &buf );
+                  server_handle_parsing_error( con, result );
                   connection_destroy( con );
                }
 
@@ -269,14 +265,10 @@ void* server_start_worker_event_loop( void* args )
             RouteHandler_t handler = router_find_route(
                 &server->router, con->request.method, con->request.path );
 
-            // If no route was registered the router returns handle_404_not_found
+            // If no route was registered the router returns
+            // handle_404_not_found
             handler( con );
-            Sand_string_t buf;
-            sand_string_create( &buf );
-            http_response_serialize( &con->response, &buf );
-            send( con->fd, buf.data, buf.size, 0 );
-            LOG_WARN( "BUFFER: %s", buf.data );
-            sand_string_destroy( &buf );
+            server_serialize_and_send_response( con );
             connection_destroy( con );
             continue;
 
@@ -301,4 +293,70 @@ void* server_start_worker_event_loop( void* args )
          }
       }
    }
+}
+
+//------------------------------------------------------------------------------
+void server_handle_parsing_error( Connection_t* con, ParseResult_t result )
+{
+   Sand_string_t buf;
+   sand_string_create( &buf );
+
+   switch ( result )
+   {
+   case PARSE_ERROR_MALFORMED_REQUEST_LINE:
+   {
+      con->response.status_code = 400;
+      strcpy( con->response.status_text, "Bad Request" );
+      break;
+   }
+
+   case PARSE_ERROR_INVALID_HEADERS:
+   {
+      con->response.status_code = 431;
+      strcpy( con->response.status_text, "Request Header" );
+      break;
+   }
+
+   case PARSE_ERROR_PATH_TOO_LONG:
+   {
+      con->response.status_code = 431;
+      strcpy( con->response.status_text, "Request Header" );
+      break;
+   }
+
+   case PARSE_ERROR_TOO_MANY_HEADERS:
+   {
+      con->response.status_code = 431;
+      strcpy( con->response.status_text, "Request Header" );
+      break;
+   }
+
+   case PARSE_ERROR_MISSING_HOST:
+   {
+      con->response.status_code = 400;
+      strcpy( con->response.status_text, "Bad Request" );
+      break;
+   }
+
+   default:
+   {
+   }
+   };
+
+   http_response_serialize( &con->response, &buf );
+   send( con->fd, buf.data, buf.size, 0 );
+   sand_string_destroy( &buf );
+}
+
+//------------------------------------------------------------------------------
+void server_serialize_and_send_response( Connection_t* con )
+{
+   Sand_string_t buf;
+   sand_string_create( &buf );
+
+   http_response_serialize( &con->response, &buf );
+
+   send( con->fd, buf.data, buf.size, 0 );
+   LOG_WARN( "Sending response buffer:\n%s\n", buf.data );
+   sand_string_destroy( &buf );
 }
