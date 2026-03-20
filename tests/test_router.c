@@ -174,7 +174,18 @@ void test_http11_path_with_query_string( void )
 // (RFC 7231 section 6.5.5)
 void test_http11_method_not_allowed( void )
 {
+   // Register GET /resource but request POST /resource
+   router_add_route( &router, "GET", "/resource", handler_home );
+
+   RouteHandler_t found = router_find_route( &router, "POST", "/resource" );
+
+   // Currently returns 404 handler — should return a 405 handler instead
+   // Once implemented:
+   // Connection_t con = { 0 };
+   // found( &con );
+   // TEST_ASSERT_EQUAL( 405, con.response.status_code );
    TEST_IGNORE_MESSAGE( "TODO: Return 405 when path matches but method doesn't" );
+   (void)found;
 }
 
 //------------------------------------------------------------------------------
@@ -182,7 +193,18 @@ void test_http11_method_not_allowed( void )
 // Server should either support TRACE or explicitly reject it
 void test_http11_trace_method( void )
 {
+   // TRACE is 5 chars, fits in method[8]
+   // Server should either handle it or return 405/501
+   RouteHandler_t found = router_find_route( &router, "TRACE", "/" );
+
+   // Once implemented — either a dedicated TRACE handler or explicit rejection:
+   // Connection_t con = { 0 };
+   // found( &con );
+   // TEST_ASSERT_TRUE( con.response.status_code == 200 ||
+   //                   con.response.status_code == 405 ||
+   //                   con.response.status_code == 501 );
    TEST_IGNORE_MESSAGE( "TODO: Support or explicitly reject TRACE method" );
+   (void)found;
 }
 
 //------------------------------------------------------------------------------
@@ -190,28 +212,72 @@ void test_http11_trace_method( void )
 // Server should handle or reject CONNECT
 void test_http11_connect_method( void )
 {
+   // CONNECT is 7 chars, fits in method[8]
+   RouteHandler_t found = router_find_route( &router, "CONNECT", "localhost:443" );
+
+   // Once implemented:
+   // Connection_t con = { 0 };
+   // found( &con );
+   // TEST_ASSERT_TRUE( con.response.status_code == 405 ||
+   //                   con.response.status_code == 501 );
    TEST_IGNORE_MESSAGE( "TODO: Handle or reject CONNECT method" );
+   (void)found;
 }
 
 //------------------------------------------------------------------------------
 // HTTP/1.1: 501 Not Implemented for unrecognized methods (RFC 7231 section 6.6.2)
 void test_http11_unknown_method_501( void )
 {
+   // FOOBAR is not a standard HTTP method
+   RouteHandler_t found = router_find_route( &router, "FOOBAR", "/" );
+
+   // Currently returns 404 handler — should return 501 handler
+   // Once implemented:
+   // Connection_t con = { 0 };
+   // found( &con );
+   // TEST_ASSERT_EQUAL( 501, con.response.status_code );
    TEST_IGNORE_MESSAGE( "TODO: Return 501 Not Implemented for unrecognized methods (e.g. PATCH, FOOBAR)" );
+   (void)found;
 }
 
 //------------------------------------------------------------------------------
 // HTTP/1.1: 405 response MUST include Allow header listing valid methods (RFC 7231 section 6.5.5)
 void test_http11_405_includes_allow_header( void )
 {
+   // Register GET and HEAD for /resource
+   router_add_route( &router, "GET", "/resource", handler_home );
+   router_add_route( &router, "HEAD", "/resource", handler_about );
+
+   // Request with POST — path exists but method doesn't
+   RouteHandler_t found = router_find_route( &router, "POST", "/resource" );
+
+   // Once implemented, the 405 handler should set an Allow header:
+   // Connection_t con = { 0 };
+   // found( &con );
+   // TEST_ASSERT_EQUAL( 405, con.response.status_code );
+   // const char* allow = /* find Allow header in response */;
+   // TEST_ASSERT_NOT_NULL( strstr( allow, "GET" ) );
+   // TEST_ASSERT_NOT_NULL( strstr( allow, "HEAD" ) );
    TEST_IGNORE_MESSAGE( "TODO: 405 response must include Allow header (e.g. Allow: GET, HEAD)" );
+   (void)found;
 }
 
 //------------------------------------------------------------------------------
 // HTTP/1.1: OPTIONS * for server-wide capabilities (RFC 7231 section 4.3.7)
 void test_http11_options_asterisk( void )
 {
+   // OPTIONS * is a valid server-wide request
+   router_add_route( &router, "GET", "/", handler_home );
+
+   RouteHandler_t found = router_find_route( &router, "OPTIONS", "*" );
+
+   // Once implemented, should return a handler that lists all supported methods:
+   // Connection_t con = { 0 };
+   // found( &con );
+   // TEST_ASSERT_EQUAL( 200, con.response.status_code );
+   // Should include Allow header with all methods the server supports
    TEST_IGNORE_MESSAGE( "TODO: Handle OPTIONS * request for server-wide capabilities" );
+   (void)found;
 }
 
 //------------------------------------------------------------------------------

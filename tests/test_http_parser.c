@@ -3,6 +3,7 @@
 #include "unity.h"
 
 #include "../HttpParser.h"
+#include "../Log.h"
 
 void setUp( void ) {}
 void tearDown( void ) {}
@@ -175,7 +176,23 @@ void test_http11_chunked_transfer_encoding_header( void )
 // RFC 7230 section 3.2.4: obs-fold = CRLF 1*( SP / HTAB )
 void test_http11_obs_fold_multiline_header( void )
 {
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   // obs-fold: continuation line starts with SP or HTAB
+   int len = build_request( buf, "GET / HTTP/1.1\r\n"
+                                  "Host: localhost\r\n"
+                                  "X-Long-Header: value1\r\n"
+                                  " continued-value\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   // Once implemented, the folded value should be merged:
+   // TEST_ASSERT_EQUAL( PARSE_OK, res );
+   // TEST_ASSERT_EQUAL_STRING( "value1 continued-value", req.headers[ 1 ].value );
    TEST_IGNORE_MESSAGE( "TODO: Handle obs-fold (deprecated line folding) in headers" );
+   (void)res;
 }
 
 //------------------------------------------------------------------------------
@@ -183,7 +200,22 @@ void test_http11_obs_fold_multiline_header( void )
 // e.g. GET http://www.example.com/path HTTP/1.1
 void test_http11_absolute_form_uri( void )
 {
-   TEST_IGNORE_MESSAGE( "TODO: Parse absolute-form URI in request line" );
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   // Proxy-style absolute-form URI
+   int len = build_request( buf, "GET http://www.example.com/path HTTP/1.1\r\n"
+                                  "Host: www.example.com\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   // sscanf will capture the full absolute URI in path — that's fine for now
+   // but a compliant server should extract just "/path" for routing
+   TEST_ASSERT_EQUAL( PARSE_OK, res );
+   // Once implemented, path should be extracted from the absolute URI:
+   // TEST_ASSERT_EQUAL_STRING( "/path", req.path );
+   TEST_IGNORE_MESSAGE( "TODO: Extract path from absolute-form URI for routing" );
 }
 
 //------------------------------------------------------------------------------
@@ -268,7 +300,20 @@ void test_parse_delete_request( void )
 // Leading/trailing whitespace in header values should be stripped
 void test_http11_header_value_whitespace_trimming( void )
 {
-   TEST_IGNORE_MESSAGE( "TODO: Trim leading/trailing OWS from header values" );
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   // Header value with extra leading/trailing whitespace
+   int len = build_request( buf, "GET / HTTP/1.1\r\n"
+                                  "      Host:   localhost   \r\n"
+                                  "Accept:  text/html \r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   TEST_ASSERT_EQUAL( PARSE_OK, res );
+   TEST_ASSERT_EQUAL_STRING( "localhost", req.headers[ 0 ].value );
+   TEST_ASSERT_EQUAL_STRING( "text/html", req.headers[ 1 ].value );
 }
 
 //------------------------------------------------------------------------------
@@ -276,14 +321,39 @@ void test_http11_header_value_whitespace_trimming( void )
 // Missing method, path, or version should be rejected
 void test_http11_malformed_request_line_missing_version( void )
 {
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   // Request line missing version
+   int len = build_request( buf, "GET /index.html\r\n"
+                                  "Host: localhost\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   // Once implemented:
+   // TEST_ASSERT_EQUAL( PARSE_ERROR_MALFORMED_REQUEST_LINE, res );
    TEST_IGNORE_MESSAGE( "TODO: Return PARSE_ERROR_MALFORMED_REQUEST_LINE for incomplete request line" );
+   (void)res;
 }
 
 //------------------------------------------------------------------------------
 // HTTP/1.1: 400 Bad Request for empty request line
 void test_http11_empty_request_line( void )
 {
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   // Completely empty — just the terminator
+   int len = build_request( buf, "\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   // Once implemented:
+   // TEST_ASSERT_EQUAL( PARSE_ERROR_MALFORMED_REQUEST_LINE, res );
    TEST_IGNORE_MESSAGE( "TODO: Return error for empty request line" );
+   (void)res;
 }
 
 //------------------------------------------------------------------------------
@@ -291,7 +361,25 @@ void test_http11_empty_request_line( void )
 // Server should reject requests with excessively long URIs
 void test_http11_uri_too_long( void )
 {
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   // Build a path longer than 255 chars (req.path is char[256])
+   char long_uri[ 300 ];
+   long_uri[ 0 ] = '/';
+   memset( long_uri + 1, 'a', 298 );
+   long_uri[ 299 ] = '\0';
+
+   char raw[ 4096 ];
+   snprintf( raw, sizeof( raw ), "GET %s HTTP/1.1\r\nHost: localhost\r\n\r\n", long_uri );
+
+   int len = build_request( buf, raw );
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   // Once implemented:
+   // TEST_ASSERT_EQUAL( PARSE_ERROR_PATH_TOO_LONG, res );
    TEST_IGNORE_MESSAGE( "TODO: Return PARSE_ERROR_PATH_TOO_LONG for URIs exceeding limit" );
+   (void)res;
 }
 
 //------------------------------------------------------------------------------
@@ -299,7 +387,25 @@ void test_http11_uri_too_long( void )
 // Reject requests when individual header or total headers are too large
 void test_http11_header_fields_too_large( void )
 {
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   // Header name longer than MAX_HEADER_NAME_LEN (64)
+   char long_name[ 80 ];
+   memset( long_name, 'X', 79 );
+   long_name[ 79 ] = '\0';
+
+   char raw[ 4096 ];
+   snprintf( raw, sizeof( raw ),
+             "GET / HTTP/1.1\r\nHost: localhost\r\n%s: value\r\n\r\n", long_name );
+
+   int len = build_request( buf, raw );
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   // Once implemented, should reject or truncate safely:
+   // TEST_ASSERT_NOT_EQUAL( PARSE_OK, res );
    TEST_IGNORE_MESSAGE( "TODO: Reject requests with header fields exceeding MAX_HEADER_NAME_LEN/MAX_HEADER_VALUE_LEN" );
+   (void)res;
 }
 
 //------------------------------------------------------------------------------
@@ -307,7 +413,24 @@ void test_http11_header_fields_too_large( void )
 // If both are present, Transfer-Encoding takes precedence, Content-Length must be removed
 void test_http11_conflicting_content_length_and_transfer_encoding( void )
 {
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   // Both Content-Length and Transfer-Encoding present — must reject or
+   // ignore Content-Length per RFC 7230 section 3.3.3
+   int len = build_request( buf, "POST /data HTTP/1.1\r\n"
+                                  "Host: localhost\r\n"
+                                  "Content-Length: 10\r\n"
+                                  "Transfer-Encoding: chunked\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   // Once implemented, Transfer-Encoding takes precedence:
+   // TEST_ASSERT_EQUAL( PARSE_OK, res );
+   // Content-Length should be ignored/removed when Transfer-Encoding is present
    TEST_IGNORE_MESSAGE( "TODO: Handle conflicting Content-Length and Transfer-Encoding headers" );
+   (void)res;
 }
 
 //------------------------------------------------------------------------------
@@ -315,7 +438,22 @@ void test_http11_conflicting_content_length_and_transfer_encoding( void )
 // POST/PUT without Content-Length or Transfer-Encoding should get 411
 void test_http11_length_required_for_body( void )
 {
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   // POST without Content-Length or Transfer-Encoding
+   int len = build_request( buf, "POST /data HTTP/1.1\r\n"
+                                  "Host: localhost\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   // Parser parses headers fine, but the server layer should detect
+   // that a POST has no length indication and respond 411
+   // This could be a parser-level check or server-level check
+   // TEST_ASSERT_EQUAL( PARSE_OK, res );  // or a new error code
    TEST_IGNORE_MESSAGE( "TODO: Detect missing Content-Length/Transfer-Encoding on requests that need a body" );
+   (void)res;
 }
 
 //------------------------------------------------------------------------------
@@ -341,28 +479,89 @@ void test_http10_no_host_required( void )
 // HTTP/1.1: 505 HTTP Version Not Supported (RFC 7231 section 6.6.6)
 void test_http11_unsupported_version( void )
 {
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   int len = build_request( buf, "GET / HTTP/2.0\r\n"
+                                  "Host: localhost\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   // Currently parses fine — version is just stored as a string
+   // Once implemented, should reject unsupported versions:
+   // TEST_ASSERT_NOT_EQUAL( PARSE_OK, res );
    TEST_IGNORE_MESSAGE( "TODO: Return error for unsupported HTTP versions (e.g. HTTP/2.0 in plaintext)" );
+   (void)res;
 }
 
 //------------------------------------------------------------------------------
 // HTTP/1.1: multiple Content-Length values must all agree (RFC 7230 section 3.3.2)
 void test_http11_multiple_content_length_must_agree( void )
 {
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   // Two Content-Length headers with different values — must reject
+   int len = build_request( buf, "POST /data HTTP/1.1\r\n"
+                                  "Host: localhost\r\n"
+                                  "Content-Length: 10\r\n"
+                                  "Content-Length: 20\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   // Once implemented:
+   // TEST_ASSERT_NOT_EQUAL( PARSE_OK, res );
    TEST_IGNORE_MESSAGE( "TODO: Reject request if multiple Content-Length headers disagree" );
+   (void)res;
 }
 
 //------------------------------------------------------------------------------
 // HTTP/1.1: reject header names with spaces before colon (RFC 7230 section 3.2.4)
 void test_http11_reject_space_before_colon_in_header( void )
 {
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   // Space before colon is invalid per RFC 7230
+   int len = build_request( buf, "GET / HTTP/1.1\r\n"
+                                  "Host : localhost\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   // Once implemented:
+   // TEST_ASSERT_EQUAL( PARSE_ERROR_INVALID_HEADERS, res );
    TEST_IGNORE_MESSAGE( "TODO: Reject header lines with whitespace between name and colon" );
+   (void)res;
 }
 
 //------------------------------------------------------------------------------
 // HTTP/1.1: handle MAX_HEADERS overflow gracefully
 void test_http11_too_many_headers( void )
 {
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   // Build a request with MAX_HEADERS + 1 headers
+   char raw[ 4096 ];
+   int  off = 0;
+   off += snprintf( raw + off, sizeof( raw ) - off, "GET / HTTP/1.1\r\n" );
+   for ( int i = 0; i <= MAX_HEADERS; i++ )
+   {
+      off += snprintf( raw + off, sizeof( raw ) - off, "X-H%d: val%d\r\n", i, i );
+   }
+   off += snprintf( raw + off, sizeof( raw ) - off, "\r\n" );
+
+   int len = build_request( buf, raw );
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   // Once implemented, should reject or stop at MAX_HEADERS:
+   // TEST_ASSERT_NOT_EQUAL( PARSE_OK, res );
+   // Or: TEST_ASSERT_EQUAL( MAX_HEADERS, req.header_count );
    TEST_IGNORE_MESSAGE( "TODO: Return error when request exceeds MAX_HEADERS count" );
+   (void)res;
 }
 
 //------------------------------------------------------------------------------

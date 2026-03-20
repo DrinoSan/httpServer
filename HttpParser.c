@@ -1,9 +1,11 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 #include "HttpParser.h"
 #include "Log.h"
+#include "Sand_string.h"
 
 //------------------------------------------------------------------------------
 ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
@@ -47,14 +49,25 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
       // terminate myself and i am happy to do so
       request->headers[ idx ].name[ name_len ] = '\0';
 
+      // Trimming whitespaces
+      sand_string_trim_cstr( request->headers[ idx ].name, 0 );
+
       // header value handling
       int32_t value_len = eol - ( colon + 2 );
       memcpy( request->headers[ idx ].value, colon + 2, value_len );
       request->headers[ idx ].value[ value_len ] = '\0';
 
+      // Trimming whitespaces
+      sand_string_trim_cstr( request->headers[ idx ].value, 0 );
+
       line = eol + 2;   // next line
       idx++;
       request->header_count += 1;
+
+      if( request->header_count >= MAX_HEADERS )
+      {
+         return PARSE_ERROR_TOO_MANY_HEADERS;
+      }
    }
 
    return PARSE_OK;
