@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -7,6 +8,10 @@
 #include "HttpRequest.h"
 #include "Log.h"
 #include "Sand_string.h"
+
+void http_parser_sanitize_absolut_path( char* path );
+bool http_parser_is_valid_version( int32_t matched, char* version );
+bool http_parser_is_valid_path( int32_t matched, const char* path );
 
 //------------------------------------------------------------------------------
 ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
@@ -17,43 +22,19 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
 
    // parsing the request line
    // If someone has a path longer than 255 then fuck that
-   sscanf( buffer, "%7s %255s %15s", request->method, request->path,
-           request->version );
+   int32_t matched = sscanf( buffer, "%7s %255s %15s", request->method,
+                             request->path, request->version );
 
-   // check for unit test test_http11_absolute_form_uri
-   if ( strncmp( request->path, "http://", 7 ) == 0 )
+   http_parser_sanitize_absolut_path( request->path );
+
+   if ( !http_parser_is_valid_version( matched, request->version ) )
    {
-      char* authority = request->path + 7;
-      char* slash     = strchr( authority, '/' );
-      if ( slash == NULL )
-      {
-         // No path requested invalid
-         request->path[ 0 ] = '/';
-         request->path[ 1 ] = '\0';
-      }
-      else
-      {
-         int32_t path_len = strlen( slash );
-         memmove( request->path, slash, path_len );
-         request->path[ path_len ] = '\0';
-      }
+      return PARSE_ERROR_MALFORMED_REQUEST_LINE;
    }
-   else if ( strncmp( request->path, "https://", 8 ) == 0 )
+
+   if ( !http_parser_is_valid_path( matched, request->path ) )
    {
-      char* authority = request->path + 8;
-      char* slash     = strchr( authority, '/' );
-      if ( slash == NULL )
-      {
-         // No path requested invalid
-         request->path[ 0 ] = '/';
-         request->path[ 1 ] = '\0';
-      }
-      else
-      {
-         int32_t path_len = strlen( slash );
-         memmove( request->path, slash, path_len );
-         request->path[ path_len ] = '\0';
-      }
+      return PARSE_ERROR_MALFORMED_REQUEST_LINE;
    }
 
    // Skipping the request line
@@ -118,4 +99,69 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
    }
 
    return PARSE_OK;
+}
+
+void http_parser_sanitize_absolut_path( char* path )
+{
+   // check for unit test test_http11_absolute_form_uri
+   if ( strncmp( path, "http://", 7 ) == 0 )
+   {
+      char* authority = path + 7;
+      char* slash     = strchr( authority, '/' );
+      if ( slash == NULL )
+      {
+         // No path requested invalid
+         path[ 0 ] = '/';
+         path[ 1 ] = '\0';
+      }
+      else
+      {
+         int32_t path_len = strlen( slash );
+         memmove( path, slash, path_len );
+         path[ path_len ] = '\0';
+      }
+   }
+   else if ( strncmp( path, "https://", 8 ) == 0 )
+   {
+      char* authority = path + 8;
+      char* slash     = strchr( authority, '/' );
+      if ( slash == NULL )
+      {
+         // No path requested invalid
+         path[ 0 ] = '/';
+         path[ 1 ] = '\0';
+      }
+      else
+      {
+         int32_t path_len = strlen( slash );
+         memmove( path, slash, path_len );
+         path[ path_len ] = '\0';
+      }
+   }
+}
+
+//------------------------------------------------------------------------------
+bool http_parser_is_valid_version( int32_t matched, char* version )
+{
+   // Matched returnes how many matches it got but for %15s it would skip spaces
+   // and conitnue untill the next non whitespace
+   if ( matched != 3 || ( strcmp( version, "HTTP/1.1" ) != 0 &&
+                          strcmp( version, "HTTP/1.0" ) != 0 ) )
+   {
+      return false;
+   }
+
+   return true;
+}
+
+//------------------------------------------------------------------------------
+bool http_parser_is_valid_path( int32_t matched, const char* path )
+{
+   // * for options
+   if ( matched != 3 || ( path[ 0 ] != '/' && path[ 0 ] != '*' ) )
+   {
+      return false;
+   }
+
+   return true;
 }
