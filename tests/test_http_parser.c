@@ -379,9 +379,25 @@ void test_http11_malformed_request_line_missing_version( void )
 
    ParseResult_t res = http_parser_parse_headers( buf, len, &req );
 
-   // Once implemented:
-   // TEST_ASSERT_EQUAL( PARSE_ERROR_MALFORMED_REQUEST_LINE, res );
-   TEST_IGNORE_MESSAGE( "TODO: Return PARSE_ERROR_MALFORMED_REQUEST_LINE for incomplete request line" );
+   TEST_ASSERT_EQUAL( PARSE_ERROR_MALFORMED_REQUEST_LINE, res );
+   (void)res;
+}
+
+//------------------------------------------------------------------------------
+void test_http11_malformed_request_line_missing_method( void )
+{
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+   //[WARN]  method: ex.html path: HTTP/1.1 version: Host: | HttpParser.c:25
+
+   // Request line missing version
+   int len = build_request( buf, "/index.html  HTTP/1.1\r\n"
+                                  "Host: localhost\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   TEST_ASSERT_EQUAL( PARSE_ERROR_MALFORMED_REQUEST_LINE, res );
    (void)res;
 }
 
@@ -637,6 +653,7 @@ int main( void )
    RUN_TEST( test_parse_delete_request );
    RUN_TEST( test_http11_header_value_whitespace_trimming );
    RUN_TEST( test_http11_malformed_request_line_missing_version );
+   RUN_TEST( test_http11_malformed_request_line_missing_method );
    RUN_TEST( test_http11_empty_request_line );
    RUN_TEST( test_http11_uri_too_long );
    RUN_TEST( test_http11_header_fields_too_large );
