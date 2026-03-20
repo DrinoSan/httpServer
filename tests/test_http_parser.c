@@ -67,13 +67,14 @@ void test_headers_stored_lowercase( void )
    HttpRequest_t  req = { 0 };
 
    int len = build_request( buf, "GET / HTTP/1.1\r\n"
+                                  "Host: localhost\r\n"
                                   "Content-Type: text/plain\r\n"
                                   "\r\n" );
 
    ParseResult_t res = http_parser_parse_headers( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
-   TEST_ASSERT_EQUAL_STRING( "content-type", req.headers[ 0 ].name );
+   TEST_ASSERT_EQUAL_STRING( "content-type", req.headers[ 1 ].name );
 }
 
 //------------------------------------------------------------------------------
@@ -83,6 +84,7 @@ void test_header_without_colon_returns_error( void )
    HttpRequest_t  req = { 0 };
 
    int len = build_request( buf, "GET / HTTP/1.1\r\n"
+                                  "Host: localhost\r\n"
                                   "BadHeaderNoColon\r\n"
                                   "\r\n" );
 
@@ -92,13 +94,28 @@ void test_header_without_colon_returns_error( void )
 }
 
 //------------------------------------------------------------------------------
-// This test documents the expected correct behavior: 0 headers parsed -> count=0
-void test_request_with_no_headers( void )
+// HTTP/1.1 with no headers at all — must fail because Host is missing
+void test_request_with_no_headers_http11( void )
 {
    char           buf[ 4096 ];
    HttpRequest_t  req = { 0 };
 
    int len = build_request( buf, "GET / HTTP/1.1\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   TEST_ASSERT_EQUAL( PARSE_ERROR_MISSING_HOST, res );
+   TEST_ASSERT_EQUAL( 0, req.header_count );
+}
+
+// HTTP/1.0 with no headers — should be fine (no Host required)
+void test_request_with_no_headers_http10( void )
+{
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   int len = build_request( buf, "GET / HTTP/1.0\r\n"
                                   "\r\n" );
 
    ParseResult_t res = http_parser_parse_headers( buf, len, &req );
@@ -143,9 +160,8 @@ void test_http11_missing_host_header_should_error( void )
 
    ParseResult_t res = http_parser_parse_headers( buf, len, &req );
 
-   // For now the parser doesn't validate Host requirement
-   // Once implemented, this should return an error for HTTP/1.1 without Host
-   TEST_IGNORE_MESSAGE( "TODO: HTTP/1.1 requires Host header validation" );
+   TEST_ASSERT_NOT_EQUAL( PARSE_OK, res );
+   TEST_ASSERT_EQUAL( PARSE_ERROR_MISSING_HOST, res );
    (void)res;
 }
 
@@ -213,9 +229,41 @@ void test_http11_absolute_form_uri( void )
    // sscanf will capture the full absolute URI in path — that's fine for now
    // but a compliant server should extract just "/path" for routing
    TEST_ASSERT_EQUAL( PARSE_OK, res );
-   // Once implemented, path should be extracted from the absolute URI:
-   // TEST_ASSERT_EQUAL_STRING( "/path", req.path );
-   TEST_IGNORE_MESSAGE( "TODO: Extract path from absolute-form URI for routing" );
+   TEST_ASSERT_EQUAL_STRING( "/path", req.path );
+}
+
+//------------------------------------------------------------------------------
+// HTTP/1.1: absolute-form URI with no trailing path defaults to "/"
+void test_http11_absolute_form_uri_no_path( void )
+{
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   int len = build_request( buf, "GET http://example.com HTTP/1.1\r\n"
+                                  "Host: example.com\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   TEST_ASSERT_EQUAL( PARSE_OK, res );
+   TEST_ASSERT_EQUAL_STRING( "/", req.path );
+}
+
+//------------------------------------------------------------------------------
+// HTTP/1.1: absolute-form URI with https scheme
+void test_http11_absolute_form_uri_https( void )
+{
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   int len = build_request( buf, "GET https://example.com/secure HTTP/1.1\r\n"
+                                  "Host: example.com\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   TEST_ASSERT_EQUAL( PARSE_OK, res );
+   TEST_ASSERT_EQUAL_STRING( "/secure", req.path );
 }
 
 //------------------------------------------------------------------------------
@@ -470,9 +518,6 @@ void test_http10_no_host_required( void )
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL_STRING( "HTTP/1.0", req.version );
-
-   // HTTP/1.0 should not require Host header
-   TEST_IGNORE_MESSAGE( "TODO: HTTP/1.0 should not require Host header; connection defaults to close" );
 }
 
 //------------------------------------------------------------------------------
@@ -544,11 +589,12 @@ void test_http11_too_many_headers( void )
    char           buf[ 4096 ];
    HttpRequest_t  req = { 0 };
 
-   // Build a request with MAX_HEADERS + 1 headers
+   // Build a request with MAX_HEADERS + 1 headers (including Host)
    char raw[ 4096 ];
    int  off = 0;
    off += snprintf( raw + off, sizeof( raw ) - off, "GET / HTTP/1.1\r\n" );
-   for ( int i = 0; i <= MAX_HEADERS; i++ )
+   off += snprintf( raw + off, sizeof( raw ) - off, "Host: localhost\r\n" );
+   for ( int i = 0; i < MAX_HEADERS; i++ )
    {
       off += snprintf( raw + off, sizeof( raw ) - off, "X-H%d: val%d\r\n", i, i );
    }
@@ -574,7 +620,8 @@ int main( void )
    RUN_TEST( test_parse_multiple_headers );
    RUN_TEST( test_headers_stored_lowercase );
    RUN_TEST( test_header_without_colon_returns_error );
-   RUN_TEST( test_request_with_no_headers );
+   RUN_TEST( test_request_with_no_headers_http11 );
+   RUN_TEST( test_request_with_no_headers_http10 );
    RUN_TEST( test_parse_post_with_content_length );
 
    // HTTP/1.1 compliance (TDD - some will be IGNORED until implemented)
@@ -582,6 +629,8 @@ int main( void )
    RUN_TEST( test_http11_chunked_transfer_encoding_header );
    RUN_TEST( test_http11_obs_fold_multiline_header );
    RUN_TEST( test_http11_absolute_form_uri );
+   RUN_TEST( test_http11_absolute_form_uri_no_path );
+   RUN_TEST( test_http11_absolute_form_uri_https );
    RUN_TEST( test_http11_connection_close_header );
    RUN_TEST( test_parse_head_request );
    RUN_TEST( test_parse_put_request );
