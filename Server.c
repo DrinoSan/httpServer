@@ -201,8 +201,7 @@ void* server_start_worker_event_loop( void* args )
                con->header_len = ( end - con->buffer ) + 4;
 
                // Need to parse the headers
-               ParseResult_t result = http_parser_parse_headers(
-                   con->buffer, con->header_len, &con->request );
+               ParseResult_t result = http_parser_parse_headers( con, con->header_len, &con->request );
 
                if ( result != PARSE_OK )
                {

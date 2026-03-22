@@ -12,17 +12,19 @@
 void http_parser_sanitize_absolut_path( char* path );
 bool http_parser_is_valid_version( int32_t matched, char* version );
 bool http_parser_is_valid_path( int32_t matched, const char* path );
+bool http_parser_parse_request_line( HttpRequest_t* request );
 
 //------------------------------------------------------------------------------
-ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
+ParseResult_t http_parser_parse_headers( Connection_t* con, int32_t header_len,
                                          HttpRequest_t* request )
 {
+   http_parser_parse_request_line( request );
    // -4 because i dont need the \r\n\r\n
-   const char* headers_end = buffer + header_len - 4;
+   const char* headers_end = con->buffer + header_len - 4;
 
    // parsing the request line
    // If someone has a path longer than 255 then fuck that
-   int32_t matched = sscanf( buffer, "%7s %255s %15s", request->method,
+   int32_t matched = sscanf( con->buffer, "%7s %255s %15s", request->method,
                              request->path, request->version );
 
    http_parser_sanitize_absolut_path( request->path );
@@ -38,7 +40,7 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
    }
 
    // Skipping the request line
-   const char* line = strstr( buffer, "\r\n" ) + 2;
+   const char* line = strstr( con->buffer, "\r\n" ) + 2;
 
    int32_t idx = 0;
    while ( line < headers_end )
@@ -162,6 +164,42 @@ bool http_parser_is_valid_path( int32_t matched, const char* path )
    {
       return false;
    }
+
+   return true;
+}
+
+//------------------------------------------------------------------------------
+bool http_parser_parse_request_line( HttpRequest_t* request )
+{
+   // State machine ala nginx
+   enum
+   {
+      sand_start = 0,
+      sand_method,
+      sand_space_befor_uri,
+      sand_schema,
+      sand_schema_slash,
+      sand_schema_slash_slash,
+      sand_spaces_before_host,
+      sand_host_start,
+      sand_host,
+      sand_host_end,
+      sand_uri,
+      sand_http_09,
+      sand_http_H,
+      sand_http_HT,
+      sand_http_HTT,
+      sand_http_HTTP,
+      sand_first_major_digit,
+      sand_major_digit,
+      sand_first_minor_digit,
+      sand_minor_digit,
+      sand_spaces_after_digit,
+      sand_almost_done
+   } state;
+
+   // GET /index.html HTTP/1.1\r\n
+   state = request->state;
 
    return true;
 }

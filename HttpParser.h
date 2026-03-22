@@ -1,6 +1,7 @@
 #pragma once
 
 #include "HttpRequest.h"
+#include "Connection.h"
 
 typedef enum
 {
@@ -12,5 +13,5 @@ typedef enum
    PARSE_ERROR_MISSING_HOST,       // 400 Bad Request
 } ParseResult_t;
 
-ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
+ParseResult_t http_parser_parse_headers( Connection_t* con, int32_t header_len,
                                          HttpRequest_t* request );
