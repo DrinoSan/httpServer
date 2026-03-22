@@ -60,14 +60,11 @@ bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
       sand_start = 0,
       sand_method,
       sand_space_befor_uri,
-      sand_after_slash_in_uri,
       sand_schema,
       sand_schema_slash,
       sand_schema_slash_slash,
-      sand_spaces_before_host,
-      sand_host_start,
-      sand_host,
-      sand_host_end,
+      sand_after_slash_in_uri,
+      sand_check_uri,
       sand_uri,
       sand_http_09,
       sand_http_H,
@@ -200,14 +197,251 @@ bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
 
          case sand_after_slash_in_uri:
          {
+            switch ( ch )
+            {
+            case ' ':
+            {
+               request->uri_end = p;
+               state            = sand_http_09;
+               break;
+            }
+            case CR:
+            {
+               request->uri_end = p;
+               state            = sand_almost_done;
+               break;
+            }
+            case LF:
+            {
+               request->uri_end    = p;
+               request->http_minor = 9;
+               goto done;
+               break;
+            }
+            case '/':
+            {
+               request->complex_uri = 1;
+               state                = sand_uri;
+               break;
+            }
+            case '.':
+            {
+               request->complex_uri = 1;
+               state                = sand_uri;
+               break;
+            }
+            default:
+            {
+               // Checking if its a printable char
+               // 0x7f is DEL
+               // man ascii
+               if ( ch < 0x20 || ch == 0x7f )
+               {
+                  return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+               }
+
+               state = sand_check_uri;
+               break;
+            }
 
             break;
+            }
          }
 
          case sand_schema:
          {
+            // Lowercase and upper case letter differ by one bit at index 5
+            c = ( unsigned char ) ( ch | 0x20 );
+            if ( c >= 'a' && c <= 'z' )
+            {
+               break;
+            }
+
+            if ( ( ch >= '0' && ch <= '9' ) || ch == '+' || ch == '-' ||
+                 ch == '.' )
+            {
+               break;
+            }
+
+            switch ( ch )
+            {
+            case ':':
+            {
+               request->schema_end = p;
+               state               = sand_schema_slash;
+               break;
+            }
+            default:
+            {
+               return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+            }
+            }
+
+            // GET /index.html HTTP/1.1\r\n
 
             break;
+         }
+
+         case sand_schema_slash:
+         {
+            switch ( ch )
+            {
+            case '/':
+            {
+               state = sand_schema_slash_slash;
+               break;
+            }
+            default:
+            {
+               return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+            }
+            }
+            break;
+         }
+
+         case sand_schema_slash_slash:
+         {
+            switch ( ch )
+            {
+            case '/':
+            {
+               state = sand_host_start;
+               break;
+            }
+            default:
+            {
+               return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+            }
+            }
+            break;
+         }
+
+         case sand_http_09:
+         {
+            switch ( ch )
+            {
+            case ' ':
+            {
+               break;
+            }
+            case CR:
+            {
+               r->http_minor = 9;
+               state         = sw_almost_done;
+               break;
+            }
+            case LF:
+            {
+               r->http_minor = 9;
+               goto done;
+            }
+            case 'H':
+            {
+               // request->http_protocol.data = p;
+               state = sand_http_H;
+               break;
+            }
+            default:
+            {
+               return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+            }
+
+            break;
+            }
+         }
+
+         case sand_http_H:
+         {
+            switch( ch )
+            {
+               case 'T':
+               {
+                  state = sand_http_HT;
+                  break;
+               }
+               default:
+               {
+               return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+               }
+            }
+
+            break;
+         }
+         case sand_http_HT:
+         {
+            switch( ch )
+            {
+               case 'T':
+               {
+                  state = sand_http_HTT;
+                  break;
+               }
+               default:
+               {
+               return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+               }
+            }
+
+            break;
+         }
+         case sand_http_HTT:
+         {
+            switch( ch )
+            {
+               case 'P':
+               {
+                  state = sand_http_HTTP;
+                  break;
+               }
+               default:
+               {
+               return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+               }
+            }
+
+            break;
+         }
+         case sand_http_HTTP:
+         {
+            switch( ch )
+            {
+               case '/':
+               {
+                  state = sand_first_major_digit;
+                  break;
+               }
+               default:
+               {
+               return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+               }
+            }
+
+            break;
+         }
+
+         case sand_first_major_digit:
+         {
+            if( ch < '1' || ch > '9' )
+            {
+               return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+            }
+
+            request->http_major = ch - '0';
+            switch( ch ):
+            {
+
+               case
+            }
+         }
+
+
+         case sand_check_uri:
+         {
+         }
+
+         case sand_host_start:
+         {
+            return PARSE_ERROR_MALFORMED_REQUEST_LINE;
          }
          }
 

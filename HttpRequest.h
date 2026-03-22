@@ -36,6 +36,11 @@ typedef struct
    char* request_start;
    char* method_end;
    char* uri_start;
+   char* uri_end;
+
+   int32_t http_major;
+   int32_t http_minor;
+   int32_t complex_uri;
 } HttpRequest_t;
 
 const char* http_request_find_header( const HttpRequest_t* request,
