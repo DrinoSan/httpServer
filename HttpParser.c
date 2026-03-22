@@ -9,16 +9,227 @@
 #include "Log.h"
 #include "Sand_string.h"
 
+#define CR '\r'
+#define LF '\n'
+
+// clang-format off
+// I assume little endian
+//  Address:  0      1      2      3
+//  Value:    0x47   0x45   0x54   0x20
+//            'G'    'E'    'T'    ' '
+
+//  Address 0 → bits  0-7   (0x47)  = 0x00000047
+//  Address 1 → bits  8-15  (0x45)  = 0x00004500
+//  Address 2 → bits 16-23  (0x54)  = 0x00540000
+//  Address 3 → bits 24-31  (0x20)  = 0x20000000
+//                                    ----------
+//  Result:                           0x20544547
+// clang-format on
+
+// Assuming "GET "
+// Thats why c3 (the space) has to be moved 24 bis to the left because in M it
+// stands like this " TEG"
+#define sand_str3_cmp( m, c0, c1, c2, c3 )                                     \
+   *( uint32_t* ) m == ( ( c3 << 24 ) | ( c2 << 16 ) | ( c1 << 8 ) | c0 )
+
+#define sand_str4_cmp( m, c0, c1, c2, c3, c4 )                                 \
+   *( uint32_t* ) m == ( ( c3 << 24 ) | ( c2 << 16 ) | ( c1 << 8 ) | c0 )
+
+// clang-format off
+// First we cast it to a ( uin32_t* )m
+// Second the [1] — index 1 means "we start at the second uint32_t", which // starts at byte 4
+// Third we 0xffff the 2 most significant bytes which is garbage in little endian our 'T' 'E' is in the least significant bytes
+// clang-format on
+#define sand_str6_cmp( m, c0, c1, c2, c3, c4, c5 )                             \
+   *( uint32_t* ) m == ( ( c3 << 24 ) | ( c2 << 16 ) | ( c1 << 8 ) | c0 ) &&   \
+       ( ( ( uint32_t* ) m )[ 1 ] & 0xffff ) == ( ( c5 << 8 ) | c4 )
+
 void http_parser_sanitize_absolut_path( char* path );
 bool http_parser_is_valid_version( int32_t matched, char* version );
 bool http_parser_is_valid_path( int32_t matched, const char* path );
+bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
+                                     char* end )
+
+    bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
+                                         char* end )
+{
+   request->method_int = SAND_HTTP_UNKNOWN;
+
+   enum
+   {
+      sand_start = 0,
+      sand_method,
+      sand_space_befor_uri,
+      sand_after_slash_in_uri,
+      sand_schema,
+      sand_schema_slash,
+      sand_schema_slash_slash,
+      sand_spaces_before_host,
+      sand_host_start,
+      sand_host,
+      sand_host_end,
+      sand_uri,
+      sand_http_09,
+      sand_http_H,
+      sand_http_HT,
+      sand_http_HTT,
+      sand_http_HTTP,
+      sand_first_major_digit,
+      sand_major_digit,
+      sand_first_minor_digit,
+      sand_minor_digit,
+      sand_spaces_after_digit,
+      sand_almost_done
+   } state;
+
+   char* pos = start;
+   char* method;
+   char  c;
+
+   state = sand_start;
+
+   while ( pos != end )
+   {
+      char ch = *pos;
+      switch ( state ):
+         {
+         case sand_start:
+         {
+            request->request_start = pos;
+
+            // HTTP/1.1 spec (RFC 7230, Section 3.5)
+            // Skipping empty lines before real request line
+            if ( ch == CR || ch == LF )
+            {
+               break;
+            }
+
+            if ( ( ch < 'A' || ch > 'Z' ) && ch != '_' && ch != '-' )
+            {
+               return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+            }
+
+            state = sand_method;
+            break;
+         }
+
+         case sand_method:
+         {
+            if ( ch == ' ' )
+            {
+               request->method_end = p - 1;
+               method              = request->request_start;
+
+               state = sand_space_befor_uri;
+
+            case ( request->method_end - method ):
+            {
+            case 3:
+            {
+               if ( sand_str3_cmp( method, 'G', 'E', 'T', ' ' ) )
+               {
+                  request->method_int = SAND_HTTP_GET;
+                  break;
+               }
+
+               if ( sand_str3_cmp( method, 'P', 'U', 'T', ' ' ) )
+               {
+                  request->method_int = SAND_HTTP_PUT;
+                  break;
+               }
+
+               break;
+            }
+
+            case 4:
+            {
+               if ( sand_str4_cmp( method, 'P', 'O', 'S', 'T' ) )
+               {
+                  request->method_int = SAND_HTTP_POST;
+                  break;
+               }
+
+               break;
+            }
+
+            case 5:
+            {
+               if ( sand_str6_cmp( method, 'D', 'E', 'L', 'E', 'T', 'E' ) )
+               {
+                  request->method_int = SAND_HTTP_DELETE;
+                  break;
+               }
+
+               break;
+            }
+
+            break;
+            }
+            }
+            else
+            {
+               if ( ( ch < 'A' || ch > 'Z' ) && ch != '_' && ch != '-' )
+               {
+                  return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+               }
+
+               break;
+            }
+         }
+
+         case sand_space_befor_uri:
+         {
+            if ( ch == '/' )
+            {
+               request->uri_start = p;
+               state              = sand_after_slash_in_uri;
+               break;
+            }
+
+            // Lowercase and upper case letter differ by one bit at index 5
+            c = ( unsigned char ) ( ch | 0x20 );
+            if ( c >= 'a' && c <= 'z' )
+            {
+               r->schema_start = p;
+               state           = sand_schema;
+               break;
+            }
+
+            break;
+         }
+
+         case sand_after_slash_in_uri:
+         {
+
+            break;
+         }
+
+         case sand_schema:
+         {
+
+            break;
+         }
+         }
+
+   default:
+   {
+   }
+   }
+}
+}
 
 //------------------------------------------------------------------------------
 ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
                                          HttpRequest_t* request )
 {
    // -4 because i dont need the \r\n\r\n
-   const char* headers_end = buffer + header_len - 4;
+   const char* headers_end        = buffer + header_len - 4;
+   char*       request_line_start = buffer;
+   char*       request_line_end   = buffer;
+   while ( *request_line_end != CR )
+   {
+      request_line_end++;
+   }
 
    // parsing the request line
    // If someone has a path longer than 255 then fuck that
