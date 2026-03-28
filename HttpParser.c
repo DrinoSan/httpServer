@@ -50,6 +50,7 @@ bool http_parser_is_valid_path( const char* path );
 bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
                                      char* end );
 
+// NGINX state machine taken as guideline
 bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
                                      char* end )
 {
@@ -249,9 +250,9 @@ bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
             state = sand_uri;
             break;
          }
+         }
 
          break;
-         }
       }
 
       case sand_schema:
@@ -468,7 +469,7 @@ bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
 
       case sand_first_minor_digit:
       {
-         if ( ch < '1' || ch > '9' )
+         if ( ch < '0' || ch > '9' )
          {
             return PARSE_ERROR_MALFORMED_REQUEST_LINE;
          }
@@ -744,7 +745,7 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
    }
 
    // Further checks on headers
-   if ( strcmp( request->version, "HTTP/1.1" ) == 0 )
+   if ( request->version_int == 1001 )
    {
       if ( http_request_find_header( request, "host" ) == NULL )
       {
