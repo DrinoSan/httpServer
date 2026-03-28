@@ -152,7 +152,7 @@ bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
                break;
             }
 
-            case 5:
+            case 6:
             {
                if ( sand_str6_cmp( method, 'D', 'E', 'L', 'E', 'T', 'E' ) )
                {
