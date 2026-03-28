@@ -177,6 +177,7 @@ void* server_start_worker_event_loop( void* args )
             {
                if ( errno != EAGAIN )
                {
+                  LOG_WARN( "EAGIAIN ERROR" );
                   connection_destroy( con );
                   continue;
                }
@@ -208,13 +209,14 @@ void* server_start_worker_event_loop( void* args )
                {
                   server_handle_parsing_error( con, result );
                   connection_destroy( con );
+                  continue;
                }
 
                const char* length_value =
                    http_request_find_header( &con->request, "content-length" );
                // If its a GET request or no content_length provided we dont
                // need to check the body
-               if ( strcmp( con->request.method, "GET" ) != 0 &&
+               if ( con->request.method_int == SAND_HTTP_GET &&
                     length_value != NULL )
                {
                   con->request.content_length = atoi( length_value );
@@ -262,8 +264,8 @@ void* server_start_worker_event_loop( void* args )
 
          if ( con->state == CONN_SENDING_RESPONSE )
          {
-            RouteHandler_t handler = router_find_route(
-                &server->router, con->request.method, con->request.path );
+            RouteHandler_t handler =
+                router_find_route( &server->router, &con->request );
 
             // If no route was registered the router returns
             // handle_404_not_found
