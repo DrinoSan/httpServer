@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "Connection.h"
+#include "Log.h"
 
 //------------------------------------------------------------------------------
 Connection_t* connection_create_heap( int32_t fd )
@@ -20,7 +21,7 @@ Connection_t* connection_create_heap( int32_t fd )
 //------------------------------------------------------------------------------
 void connection_destroy( Connection_t* con )
 {
-   printf( "Freeing Connection if FD %d and closing socket\n", con->fd );
+   LOG_WARN( "Freeing Connection if FD %d and closing socket\n", con->fd );
    close( con->fd );
    free( con );
 }

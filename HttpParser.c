@@ -90,7 +90,6 @@ bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
    while ( pos != end )
    {
       char ch = *pos;
-      LOG_WARN( "CURRENT CHAR %c state %d", ch, state );
       switch ( state )
       {
       case sand_start:
@@ -205,7 +204,11 @@ bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
          case ' ':
          {
             request->uri_end = pos;
-            state            = sand_http_09;
+            // Creating the string
+            request->uri_view.data = request->uri_start;
+            request->uri_view.size = request->uri_end - request->uri_start;
+
+            state = sand_http_09;
             break;
          }
          case CR:
@@ -351,6 +354,7 @@ bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
 
          break;
          }
+         break;
       }
 
       case sand_http_H:
@@ -566,6 +570,10 @@ bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
          {
             request->uri_end = pos;
             state            = sand_http_09;
+
+            // Creating the string
+            request->uri_view.data = request->uri_start;
+            request->uri_view.size = request->uri_end - request->uri_start;
             break;
          }
          case CR:
@@ -632,187 +640,187 @@ bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
       }
       }
 
-         pos++;
-      }
-
-   done:
-
-      if ( request->request_end == NULL )
-      {
-         request->request_end = pos;
-      }
-
-      request->version_int = request->http_major * 1000 + request->http_minor;
-      request->state       = sand_start;
-
-      if ( request->version_int == 9 && request->method_int != SAND_HTTP_GET )
-      {
-         return PARSE_INVALID_09_METHOD;
-      }
-
-      return true;
+      pos++;
    }
 
-   //------------------------------------------------------------------------------
-   ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
-                                            HttpRequest_t* request )
+done:
+
+   if ( request->request_end == NULL )
    {
-      // -4 because i dont need the \r\n\r\n
-      const char* headers_end        = buffer + header_len - 4;
-      char*       request_line_start = buffer;
-      char*       request_line_end   = buffer;
-      while ( *request_line_end != CR )
-      {
-         request_line_end++;
-      }
-
-      // parsing the request line
-      // If someone has a path longer than 255 then fuck that
-      //   int32_t matched = sscanf( buffer, "%7s %255s %15s", request->method,
-      //                             request->path, request->version );
-      //
-      //   http_parser_sanitize_absolut_path( request->path );
-      http_parser_parse_request_line( request, buffer, headers_end );
-
-      if ( !http_parser_is_valid_version( request->version_int ) )
-      {
-         return PARSE_ERROR_MALFORMED_REQUEST_LINE;
-      }
-
-      if ( !http_parser_is_valid_path( request->uri_start ) )
-      {
-         return PARSE_ERROR_MALFORMED_REQUEST_LINE;
-      }
-
-      // Skipping the request line
-      const char* line = strstr( buffer, "\r\n" ) + 2;
-
-      int32_t idx = 0;
-      while ( line < headers_end )
-      {
-         // name is from line to colon
-         // value is from colon+2 to eol (skip ": ")
-         char* colon = memchr( line, ':', headers_end - line );
-         char* eol   = strstr( line, "\r\n" );
-
-         if ( colon == NULL || colon > eol )
-         {
-            // Invalid header line — no colon, skip it
-            line = eol + 2;
-            LOG_INFO( "Header line invalid!!" );
-            return PARSE_ERROR_INVALID_HEADERS;
-         }
-
-         // header name handling
-         int32_t name_len = colon - line;
-         for ( int32_t i = 0; i < name_len; i++ )
-         {
-            request->headers[ idx ].name[ i ] = tolower( line[ i ] );
-         }
-
-         // We are not in C++ land with std::string need to null
-         // terminate myself and i am happy to do so
-         request->headers[ idx ].name[ name_len ] = '\0';
-
-         // Trimming whitespaces
-         sand_string_trim_cstr( request->headers[ idx ].name, 0 );
-
-         // header value handling
-         int32_t value_len = eol - ( colon + 2 );
-         memcpy( request->headers[ idx ].value, colon + 2, value_len );
-         request->headers[ idx ].value[ value_len ] = '\0';
-
-         // Trimming whitespaces
-         sand_string_trim_cstr( request->headers[ idx ].value, 0 );
-
-         line = eol + 2;   // next line
-         idx++;
-         request->header_count += 1;
-
-         if ( request->header_count >= MAX_HEADERS )
-         {
-            return PARSE_ERROR_TOO_MANY_HEADERS;
-         }
-      }
-
-      // Further checks on headers
-      if ( strcmp( request->version, "HTTP/1.1" ) == 0 )
-      {
-         if ( http_request_find_header( request, "host" ) == NULL )
-         {
-            // Bad Request
-            return PARSE_ERROR_MISSING_HOST;
-         }
-      }
-
-      return PARSE_OK;
+      request->request_end = pos;
    }
 
-   void http_parser_sanitize_absolut_path( char* path )
+   request->version_int = request->http_major * 1000 + request->http_minor;
+   request->state       = sand_start;
+
+   if ( request->version_int == 9 && request->method_int != SAND_HTTP_GET )
    {
-      // check for unit test test_http11_absolute_form_uri
-      if ( strncmp( path, "http://", 7 ) == 0 )
-      {
-         char* authority = path + 7;
-         char* slash     = strchr( authority, '/' );
-         if ( slash == NULL )
-         {
-            // No path requested invalid
-            path[ 0 ] = '/';
-            path[ 1 ] = '\0';
-         }
-         else
-         {
-            int32_t path_len = strlen( slash );
-            memmove( path, slash, path_len );
-            path[ path_len ] = '\0';
-         }
-      }
-      else if ( strncmp( path, "https://", 8 ) == 0 )
-      {
-         char* authority = path + 8;
-         char* slash     = strchr( authority, '/' );
-         if ( slash == NULL )
-         {
-            // No path requested invalid
-            path[ 0 ] = '/';
-            path[ 1 ] = '\0';
-         }
-         else
-         {
-            int32_t path_len = strlen( slash );
-            memmove( path, slash, path_len );
-            path[ path_len ] = '\0';
-         }
-      }
+      return PARSE_INVALID_09_METHOD;
    }
 
-   //------------------------------------------------------------------------------
-   bool http_parser_is_valid_version( int32_t version )
+   return true;
+}
+
+//------------------------------------------------------------------------------
+ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
+                                         HttpRequest_t* request )
+{
+   // -4 because i dont need the \r\n\r\n
+   const char* headers_end        = buffer + header_len - 4;
+   char*       request_line_start = buffer;
+   char*       request_line_end   = buffer;
+   while ( *request_line_end != CR )
    {
-      if ( version < 1000 )
-      {
-         return false;
-      }
-      // Matched returnes how many matches it got but for %15s it would skip
-      // spaces and conitnue untill the next non whitespace if ( matched != 3 ||
-      // ( strcmp( version, "HTTP/1.1" ) != 0 &&
-      //                        strcmp( version, "HTTP/1.0" ) != 0 ) )
-      // {
-      //    return false;
-      // }
-
-      return true;
+      request_line_end++;
    }
 
-   //------------------------------------------------------------------------------
-   bool http_parser_is_valid_path( const char* path )
+   // parsing the request line
+   // If someone has a path longer than 255 then fuck that
+   //   int32_t matched = sscanf( buffer, "%7s %255s %15s", request->method,
+   //                             request->path, request->version );
+   //
+   //   http_parser_sanitize_absolut_path( request->path );
+   http_parser_parse_request_line( request, buffer, headers_end );
+
+   if ( !http_parser_is_valid_version( request->version_int ) )
    {
-      // * for options
-      if ( path[ 0 ] != '/' && path[ 0 ] != '*' )
+      return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+   }
+
+   if ( !http_parser_is_valid_path( request->uri_start ) )
+   {
+      return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+   }
+
+   // Skipping the request line
+   const char* line = strstr( buffer, "\r\n" ) + 2;
+
+   int32_t idx = 0;
+   while ( line < headers_end )
+   {
+      // name is from line to colon
+      // value is from colon+2 to eol (skip ": ")
+      char* colon = memchr( line, ':', headers_end - line );
+      char* eol   = strstr( line, "\r\n" );
+
+      if ( colon == NULL || colon > eol )
       {
-         return false;
+         // Invalid header line — no colon, skip it
+         line = eol + 2;
+         LOG_INFO( "Header line invalid!!" );
+         return PARSE_ERROR_INVALID_HEADERS;
       }
 
-      return true;
+      // header name handling
+      int32_t name_len = colon - line;
+      for ( int32_t i = 0; i < name_len; i++ )
+      {
+         request->headers[ idx ].name[ i ] = tolower( line[ i ] );
+      }
+
+      // We are not in C++ land with std::string need to null
+      // terminate myself and i am happy to do so
+      request->headers[ idx ].name[ name_len ] = '\0';
+
+      // Trimming whitespaces
+      sand_string_trim_cstr( request->headers[ idx ].name, 0 );
+
+      // header value handling
+      int32_t value_len = eol - ( colon + 2 );
+      memcpy( request->headers[ idx ].value, colon + 2, value_len );
+      request->headers[ idx ].value[ value_len ] = '\0';
+
+      // Trimming whitespaces
+      sand_string_trim_cstr( request->headers[ idx ].value, 0 );
+
+      line = eol + 2;   // next line
+      idx++;
+      request->header_count += 1;
+
+      if ( request->header_count >= MAX_HEADERS )
+      {
+         return PARSE_ERROR_TOO_MANY_HEADERS;
+      }
    }
+
+   // Further checks on headers
+   if ( strcmp( request->version, "HTTP/1.1" ) == 0 )
+   {
+      if ( http_request_find_header( request, "host" ) == NULL )
+      {
+         // Bad Request
+         return PARSE_ERROR_MISSING_HOST;
+      }
+   }
+
+   return PARSE_OK;
+}
+
+void http_parser_sanitize_absolut_path( char* path )
+{
+   // check for unit test test_http11_absolute_form_uri
+   if ( strncmp( path, "http://", 7 ) == 0 )
+   {
+      char* authority = path + 7;
+      char* slash     = strchr( authority, '/' );
+      if ( slash == NULL )
+      {
+         // No path requested invalid
+         path[ 0 ] = '/';
+         path[ 1 ] = '\0';
+      }
+      else
+      {
+         int32_t path_len = strlen( slash );
+         memmove( path, slash, path_len );
+         path[ path_len ] = '\0';
+      }
+   }
+   else if ( strncmp( path, "https://", 8 ) == 0 )
+   {
+      char* authority = path + 8;
+      char* slash     = strchr( authority, '/' );
+      if ( slash == NULL )
+      {
+         // No path requested invalid
+         path[ 0 ] = '/';
+         path[ 1 ] = '\0';
+      }
+      else
+      {
+         int32_t path_len = strlen( slash );
+         memmove( path, slash, path_len );
+         path[ path_len ] = '\0';
+      }
+   }
+}
+
+//------------------------------------------------------------------------------
+bool http_parser_is_valid_version( int32_t version )
+{
+   if ( version < 1000 )
+   {
+      return false;
+   }
+   // Matched returnes how many matches it got but for %15s it would skip
+   // spaces and conitnue untill the next non whitespace if ( matched != 3 ||
+   // ( strcmp( version, "HTTP/1.1" ) != 0 &&
+   //                        strcmp( version, "HTTP/1.0" ) != 0 ) )
+   // {
+   //    return false;
+   // }
+
+   return true;
+}
+
+//------------------------------------------------------------------------------
+bool http_parser_is_valid_path( const char* path )
+{
+   // * for options
+   if ( path[ 0 ] != '/' && path[ 0 ] != '*' )
+   {
+      return false;
+   }
+
+   return true;
+}
