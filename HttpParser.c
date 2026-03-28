@@ -702,6 +702,18 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
       // name is from line to colon
       // value is from colon+2 to eol (skip ": ")
       char* colon = memchr( line, ':', headers_end - line );
+      if( colon > line && colon < headers_end )
+      {
+         char* check_space = colon;
+         check_space--;
+
+         // RFC 7230 Section 3.2.4 space in front of ':' is forbidden
+         if( *check_space == ' ' )
+         {
+            return PARSE_ERROR_INVALID_HEADERS;
+         }
+      }
+
       char* eol   = strstr( line, "\r\n" );
 
       if ( colon == NULL || colon > eol )
@@ -799,7 +811,7 @@ void http_parser_sanitize_absolut_path( char* path )
 //------------------------------------------------------------------------------
 bool http_parser_is_valid_version( int32_t version )
 {
-   if ( version < 1000 )
+   if ( version < 1000 || version > 1001 )
    {
       return false;
    }
