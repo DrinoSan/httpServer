@@ -81,7 +81,6 @@ RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request )
            memcmp( route->path, request->uri_view.data,
                    request->uri_view.size ) == 0 )
       {
-         LOG_WARN( "WE FOUND ROUTE __________------___--__--_" );
          return route->handler;
       }
    }

@@ -802,13 +802,6 @@ bool http_parser_is_valid_version( int32_t version )
    {
       return false;
    }
-   // Matched returnes how many matches it got but for %15s it would skip
-   // spaces and conitnue untill the next non whitespace if ( matched != 3 ||
-   // ( strcmp( version, "HTTP/1.1" ) != 0 &&
-   //                        strcmp( version, "HTTP/1.0" ) != 0 ) )
-   // {
-   //    return false;
-   // }
 
    return true;
 }
