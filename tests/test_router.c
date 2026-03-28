@@ -18,21 +18,34 @@ void setUp( void )
 
 void tearDown( void ) {}
 
+//------------------------------------------------------------------------------
+// Helper: build a minimal HttpRequest_t for router_find_route
+static HttpRequest_t make_request( int32_t method, char* path )
+{
+   HttpRequest_t req     = { 0 };
+   req.method_int        = method;
+   req.uri_view.data     = path;
+   req.uri_view.size     = strlen( path );
+   return req;
+}
+
 // ===== Existing-functionality tests (should pass) =====
 
 //------------------------------------------------------------------------------
 void test_add_route_then_find( void )
 {
-   router_add_route( &router, "GET", "/", handler_home );
-   RouteHandler_t found = router_find_route( &router, "GET", "/" );
+   router_add_route( &router, SAND_HTTP_GET, "/", handler_home );
+   HttpRequest_t  req   = make_request( SAND_HTTP_GET, "/" );
+   RouteHandler_t found = router_find_route( &router, &req );
    TEST_ASSERT_EQUAL_PTR( handler_home, found );
 }
 
 //------------------------------------------------------------------------------
 void test_find_nonexistent_route_returns_404_handler( void )
 {
-   router_add_route( &router, "GET", "/", handler_home );
-   RouteHandler_t found = router_find_route( &router, "GET", "/nope" );
+   router_add_route( &router, SAND_HTTP_GET, "/", handler_home );
+   HttpRequest_t  req   = make_request( SAND_HTTP_GET, "/nope" );
+   RouteHandler_t found = router_find_route( &router, &req );
 
    // Should return a handler (the 404 handler), not NULL
    TEST_ASSERT_NOT_NULL( found );
@@ -42,20 +55,24 @@ void test_find_nonexistent_route_returns_404_handler( void )
 //------------------------------------------------------------------------------
 void test_add_multiple_routes_find_each( void )
 {
-   router_add_route( &router, "GET", "/", handler_home );
-   router_add_route( &router, "GET", "/about", handler_about );
-   router_add_route( &router, "POST", "/api", handler_api );
+   router_add_route( &router, SAND_HTTP_GET, "/", handler_home );
+   router_add_route( &router, SAND_HTTP_GET, "/about", handler_about );
+   router_add_route( &router, SAND_HTTP_POST, "/api", handler_api );
 
-   TEST_ASSERT_EQUAL_PTR( handler_home, router_find_route( &router, "GET", "/" ) );
-   TEST_ASSERT_EQUAL_PTR( handler_about, router_find_route( &router, "GET", "/about" ) );
-   TEST_ASSERT_EQUAL_PTR( handler_api, router_find_route( &router, "POST", "/api" ) );
+   HttpRequest_t req1 = make_request( SAND_HTTP_GET, "/" );
+   HttpRequest_t req2 = make_request( SAND_HTTP_GET, "/about" );
+   HttpRequest_t req3 = make_request( SAND_HTTP_POST, "/api" );
+
+   TEST_ASSERT_EQUAL_PTR( handler_home, router_find_route( &router, &req1 ) );
+   TEST_ASSERT_EQUAL_PTR( handler_about, router_find_route( &router, &req2 ) );
+   TEST_ASSERT_EQUAL_PTR( handler_api, router_find_route( &router, &req3 ) );
 }
 
 //------------------------------------------------------------------------------
-void test_method_too_long_not_added( void )
+void test_invalid_method_not_added( void )
 {
-   // method buffer is 8 chars, so "LONGMETHOD" (10 chars) should be rejected
-   router_add_route( &router, "LONGMETHOD", "/", handler_home );
+   // Method with bits outside SAND_HTTP_ALL_METHODS should be rejected
+   router_add_route( &router, 0x80000000, "/", handler_home );
    TEST_ASSERT_EQUAL( 0, router.count_routes );
 }
 
@@ -68,7 +85,7 @@ void test_path_too_long_not_added( void )
    long_path[ 0 ]   = '/';
    long_path[ 299 ] = '\0';
 
-   router_add_route( &router, "GET", long_path, handler_home );
+   router_add_route( &router, SAND_HTTP_GET, long_path, handler_home );
    TEST_ASSERT_EQUAL( 0, router.count_routes );
 }
 
@@ -79,28 +96,31 @@ void test_exceed_max_routes( void )
    for ( int32_t i = 0; i < MAX_ROUTES; i++ )
    {
       snprintf( path, sizeof( path ), "/%d", i );
-      router_add_route( &router, "GET", path, handler_home );
+      router_add_route( &router, SAND_HTTP_GET, path, handler_home );
    }
    TEST_ASSERT_EQUAL( MAX_ROUTES, router.count_routes );
 
    // One more should not be added
-   router_add_route( &router, "GET", "/overflow", handler_home );
+   router_add_route( &router, SAND_HTTP_GET, "/overflow", handler_home );
    TEST_ASSERT_EQUAL( MAX_ROUTES, router.count_routes );
 }
 
 //------------------------------------------------------------------------------
 void test_exact_match_only( void )
 {
-   router_add_route( &router, "GET", "/home", handler_home );
+   router_add_route( &router, SAND_HTTP_GET, "/home", handler_home );
 
    // Similar but different paths should not match
-   RouteHandler_t found = router_find_route( &router, "GET", "/homes" );
+   HttpRequest_t req1 = make_request( SAND_HTTP_GET, "/homes" );
+   RouteHandler_t found = router_find_route( &router, &req1 );
    TEST_ASSERT_NOT_EQUAL( handler_home, found );
 
-   found = router_find_route( &router, "GET", "/hom" );
+   HttpRequest_t req2 = make_request( SAND_HTTP_GET, "/hom" );
+   found = router_find_route( &router, &req2 );
    TEST_ASSERT_NOT_EQUAL( handler_home, found );
 
-   found = router_find_route( &router, "POST", "/home" );
+   HttpRequest_t req3 = make_request( SAND_HTTP_POST, "/home" );
+   found = router_find_route( &router, &req3 );
    TEST_ASSERT_NOT_EQUAL( handler_home, found );
 }
 
@@ -111,8 +131,9 @@ void test_exact_match_only( void )
 // HEAD should behave like GET but return no body
 void test_http11_head_route_matching( void )
 {
-   router_add_route( &router, "HEAD", "/", handler_home );
-   RouteHandler_t found = router_find_route( &router, "HEAD", "/" );
+   router_add_route( &router, SAND_HTTP_HEAD, "/", handler_home );
+   HttpRequest_t  req   = make_request( SAND_HTTP_HEAD, "/" );
+   RouteHandler_t found = router_find_route( &router, &req );
    TEST_ASSERT_EQUAL_PTR( handler_home, found );
 }
 
@@ -121,20 +142,23 @@ void test_http11_head_route_matching( void )
 // OPTIONS * HTTP/1.1 is a valid request
 void test_http11_options_route( void )
 {
-   router_add_route( &router, "OPTIONS", "/", handler_home );
+   router_add_route( &router, SAND_HTTP_OPTIONS, "/", handler_home );
 
-   // OPTIONS has 7 chars, fits in method[8]
-   RouteHandler_t found = router_find_route( &router, "OPTIONS", "/" );
+   HttpRequest_t  req   = make_request( SAND_HTTP_OPTIONS, "/" );
+   RouteHandler_t found = router_find_route( &router, &req );
    TEST_ASSERT_EQUAL_PTR( handler_home, found );
 }
 
 //------------------------------------------------------------------------------
 // HTTP/1.1: method matching should be case-sensitive (RFC 7230 section 3.1.1)
-void test_http11_method_case_sensitive( void )
+// With int-based methods this is inherently satisfied — different defines
+// are different ints. This test verifies mismatched method_int doesn't match.
+void test_http11_method_mismatch( void )
 {
-   router_add_route( &router, "GET", "/", handler_home );
+   router_add_route( &router, SAND_HTTP_GET, "/", handler_home );
 
-   RouteHandler_t found = router_find_route( &router, "get", "/" );
+   HttpRequest_t  req   = make_request( SAND_HTTP_POST, "/" );
+   RouteHandler_t found = router_find_route( &router, &req );
    TEST_ASSERT_NOT_EQUAL( handler_home, found );
 }
 
@@ -144,7 +168,8 @@ void test_http11_method_case_sensitive( void )
 // properly sets the response status
 void test_http11_404_handler_sets_response( void )
 {
-   RouteHandler_t handler = router_find_route( &router, "GET", "/nonexistent" );
+   HttpRequest_t  req     = make_request( SAND_HTTP_GET, "/nonexistent" );
+   RouteHandler_t handler = router_find_route( &router, &req );
    TEST_ASSERT_NOT_NULL( handler );
 
    // Call the 404 handler and check it sets status code
@@ -159,10 +184,11 @@ void test_http11_404_handler_sets_response( void )
 // Currently the router does exact match, so /path?query won't match /path
 void test_http11_path_with_query_string( void )
 {
-   router_add_route( &router, "GET", "/search", handler_home );
+   router_add_route( &router, SAND_HTTP_GET, "/search", handler_home );
 
    // With query string - currently won't match because of exact match
-   RouteHandler_t found = router_find_route( &router, "GET", "/search?q=test" );
+   HttpRequest_t  req   = make_request( SAND_HTTP_GET, "/search?q=test" );
+   RouteHandler_t found = router_find_route( &router, &req );
 
    // TODO: Implement query string stripping for route matching
    TEST_IGNORE_MESSAGE( "TODO: Strip query string from path before route matching" );
@@ -175,9 +201,10 @@ void test_http11_path_with_query_string( void )
 void test_http11_method_not_allowed( void )
 {
    // Register GET /resource but request POST /resource
-   router_add_route( &router, "GET", "/resource", handler_home );
+   router_add_route( &router, SAND_HTTP_GET, "/resource", handler_home );
 
-   RouteHandler_t found = router_find_route( &router, "POST", "/resource" );
+   HttpRequest_t  req   = make_request( SAND_HTTP_POST, "/resource" );
+   RouteHandler_t found = router_find_route( &router, &req );
 
    // Currently returns 404 handler — should return a 405 handler instead
    // Once implemented:
@@ -193,9 +220,9 @@ void test_http11_method_not_allowed( void )
 // Server should either support TRACE or explicitly reject it
 void test_http11_trace_method( void )
 {
-   // TRACE is 5 chars, fits in method[8]
    // Server should either handle it or return 405/501
-   RouteHandler_t found = router_find_route( &router, "TRACE", "/" );
+   HttpRequest_t  req   = make_request( SAND_HTTP_TRACE, "/" );
+   RouteHandler_t found = router_find_route( &router, &req );
 
    // Once implemented — either a dedicated TRACE handler or explicit rejection:
    // Connection_t con = { 0 };
@@ -212,8 +239,8 @@ void test_http11_trace_method( void )
 // Server should handle or reject CONNECT
 void test_http11_connect_method( void )
 {
-   // CONNECT is 7 chars, fits in method[8]
-   RouteHandler_t found = router_find_route( &router, "CONNECT", "localhost:443" );
+   HttpRequest_t  req   = make_request( SAND_HTTP_CONNECT, "localhost:443" );
+   RouteHandler_t found = router_find_route( &router, &req );
 
    // Once implemented:
    // Connection_t con = { 0 };
@@ -228,15 +255,16 @@ void test_http11_connect_method( void )
 // HTTP/1.1: 501 Not Implemented for unrecognized methods (RFC 7231 section 6.6.2)
 void test_http11_unknown_method_501( void )
 {
-   // FOOBAR is not a standard HTTP method
-   RouteHandler_t found = router_find_route( &router, "FOOBAR", "/" );
+   // SAND_HTTP_UNKNOWN is not a routable method
+   HttpRequest_t  req   = make_request( SAND_HTTP_UNKNOWN, "/" );
+   RouteHandler_t found = router_find_route( &router, &req );
 
    // Currently returns 404 handler — should return 501 handler
    // Once implemented:
    // Connection_t con = { 0 };
    // found( &con );
    // TEST_ASSERT_EQUAL( 501, con.response.status_code );
-   TEST_IGNORE_MESSAGE( "TODO: Return 501 Not Implemented for unrecognized methods (e.g. PATCH, FOOBAR)" );
+   TEST_IGNORE_MESSAGE( "TODO: Return 501 Not Implemented for unrecognized methods" );
    (void)found;
 }
 
@@ -245,11 +273,12 @@ void test_http11_unknown_method_501( void )
 void test_http11_405_includes_allow_header( void )
 {
    // Register GET and HEAD for /resource
-   router_add_route( &router, "GET", "/resource", handler_home );
-   router_add_route( &router, "HEAD", "/resource", handler_about );
+   router_add_route( &router, SAND_HTTP_GET, "/resource", handler_home );
+   router_add_route( &router, SAND_HTTP_HEAD, "/resource", handler_about );
 
    // Request with POST — path exists but method doesn't
-   RouteHandler_t found = router_find_route( &router, "POST", "/resource" );
+   HttpRequest_t  req   = make_request( SAND_HTTP_POST, "/resource" );
+   RouteHandler_t found = router_find_route( &router, &req );
 
    // Once implemented, the 405 handler should set an Allow header:
    // Connection_t con = { 0 };
@@ -267,9 +296,10 @@ void test_http11_405_includes_allow_header( void )
 void test_http11_options_asterisk( void )
 {
    // OPTIONS * is a valid server-wide request
-   router_add_route( &router, "GET", "/", handler_home );
+   router_add_route( &router, SAND_HTTP_GET, "/", handler_home );
 
-   RouteHandler_t found = router_find_route( &router, "OPTIONS", "*" );
+   HttpRequest_t  req   = make_request( SAND_HTTP_OPTIONS, "*" );
+   RouteHandler_t found = router_find_route( &router, &req );
 
    // Once implemented, should return a handler that lists all supported methods:
    // Connection_t con = { 0 };
@@ -289,7 +319,7 @@ int main( void )
    RUN_TEST( test_add_route_then_find );
    RUN_TEST( test_find_nonexistent_route_returns_404_handler );
    RUN_TEST( test_add_multiple_routes_find_each );
-   RUN_TEST( test_method_too_long_not_added );
+   RUN_TEST( test_invalid_method_not_added );
    RUN_TEST( test_path_too_long_not_added );
    RUN_TEST( test_exceed_max_routes );
    RUN_TEST( test_exact_match_only );
@@ -297,7 +327,7 @@ int main( void )
    // HTTP/1.1 compliance (TDD)
    RUN_TEST( test_http11_head_route_matching );
    RUN_TEST( test_http11_options_route );
-   RUN_TEST( test_http11_method_case_sensitive );
+   RUN_TEST( test_http11_method_mismatch );
    RUN_TEST( test_http11_404_handler_sets_response );
    RUN_TEST( test_http11_path_with_query_string );
    RUN_TEST( test_http11_method_not_allowed );
