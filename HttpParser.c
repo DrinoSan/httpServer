@@ -44,15 +44,20 @@
    *( uint32_t* ) m == ( ( c3 << 24 ) | ( c2 << 16 ) | ( c1 << 8 ) | c0 ) &&   \
        ( ( ( uint32_t* ) m )[ 1 ] & 0xffff ) == ( ( c5 << 8 ) | c4 )
 
-void http_parser_sanitize_absolut_path( char* path );
-bool http_parser_is_valid_version( int32_t version );
-bool http_parser_is_valid_path( const char* path );
-bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
-                                     char* end );
+void          http_parser_sanitize_absolut_path( char* path );
+bool          http_parser_is_valid_version( int32_t version );
+bool          http_parser_is_valid_path( const char* path );
+ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
+                                              char* start, char* end );
+
+bool http_parser_is_conflicting_content_length_and_transfer_encoding(
+    const HttpRequest_t* request );
+void http_parser_resolve_conflicting_content_length_and_transfer_encoding(
+    HttpRequest_t* request );
 
 // NGINX state machine taken as guideline
-bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
-                                     char* end )
+ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
+                                              char* start, char* end )
 {
    request->method_int = SAND_HTTP_UNKNOWN;
 
@@ -208,6 +213,10 @@ bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
             // Creating the string
             request->uri_view.data = request->uri_start;
             request->uri_view.size = request->uri_end - request->uri_start;
+            if ( request->uri_view.size > 255 )
+            {
+               return PARSE_ERROR_PATH_TOO_LONG;
+            }
 
             state = sand_http_09;
             break;
@@ -575,6 +584,10 @@ bool http_parser_parse_request_line( HttpRequest_t* request, char* start,
             // Creating the string
             request->uri_view.data = request->uri_start;
             request->uri_view.size = request->uri_end - request->uri_start;
+            if ( request->uri_view.size > 255 )
+            {
+               return PARSE_ERROR_PATH_TOO_LONG;
+            }
             break;
          }
          case CR:
@@ -659,7 +672,7 @@ done:
       return PARSE_INVALID_09_METHOD;
    }
 
-   return true;
+   return PARSE_OK;
 }
 
 //------------------------------------------------------------------------------
@@ -675,13 +688,11 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
       request_line_end++;
    }
 
-   // parsing the request line
-   // If someone has a path longer than 255 then fuck that
-   //   int32_t matched = sscanf( buffer, "%7s %255s %15s", request->method,
-   //                             request->path, request->version );
-   //
-   //   http_parser_sanitize_absolut_path( request->path );
-   http_parser_parse_request_line( request, buffer, headers_end );
+   int32_t res = http_parser_parse_request_line( request, buffer, headers_end );
+   if ( res != PARSE_OK )
+   {
+      return res;
+   }
 
    if ( !http_parser_is_valid_version( request->version_int ) )
    {
@@ -693,6 +704,13 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
       return PARSE_ERROR_MALFORMED_REQUEST_LINE;
    }
 
+   if ( http_parser_is_conflicting_content_length_and_transfer_encoding(
+            request ) )
+   {
+      http_parser_resolve_conflicting_content_length_and_transfer_encoding(
+          request );
+   }
+
    // Skipping the request line
    const char* line = strstr( buffer, "\r\n" ) + 2;
 
@@ -702,19 +720,19 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
       // name is from line to colon
       // value is from colon+2 to eol (skip ": ")
       char* colon = memchr( line, ':', headers_end - line );
-      if( colon > line && colon < headers_end )
+      if ( colon > line && colon < headers_end )
       {
          char* check_space = colon;
          check_space--;
 
          // RFC 7230 Section 3.2.4 space in front of ':' is forbidden
-         if( *check_space == ' ' )
+         if ( *check_space == ' ' )
          {
             return PARSE_ERROR_INVALID_HEADERS;
          }
       }
 
-      char* eol   = strstr( line, "\r\n" );
+      char* eol = strstr( line, "\r\n" );
 
       if ( colon == NULL || colon > eol )
       {
@@ -726,9 +744,24 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
 
       // header name handling
       int32_t name_len = colon - line;
+      if ( name_len > MAX_HEADER_NAME_LEN )
+      {
+         return PARSE_ERROR_HEADER_NAME_TOO_LONG;
+      }
+
       for ( int32_t i = 0; i < name_len; i++ )
       {
-         request->headers[ idx ].name[ i ] = tolower( line[ i ] );
+         // I want to lowercase all header names only if they are actually
+         // letters
+         char c = line[ i ] | 0x20;
+         if ( c >= 'a' && c <= 'z' )
+         {
+            request->headers[ idx ].name[ i ] = c;
+         }
+         else
+         {
+            request->headers[ idx ].name[ i ] = line[ i ];
+         }
       }
 
       // We are not in C++ land with std::string need to null
@@ -829,4 +862,22 @@ bool http_parser_is_valid_path( const char* path )
    }
 
    return true;
+}
+
+//------------------------------------------------------------------------------
+bool http_parser_is_conflicting_content_length_and_transfer_encoding(
+    const HttpRequest_t* request )
+{
+   if ( http_request_find_header( request, "host" ) == NULL )
+   {
+      return true;
+   }
+
+   return false;
+}
+
+//------------------------------------------------------------------------------
+void http_parser_resolve_conflicting_content_length_and_transfer_encoding(
+    HttpRequest_t* request )
+{
 }
