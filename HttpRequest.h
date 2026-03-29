@@ -33,8 +33,8 @@
 // sand_string_view
 typedef struct
 {
-   char* data;
-   size_t      size;
+   char*  data;
+   size_t size;
 } sand_string_view_t;
 
 typedef struct
@@ -49,16 +49,15 @@ typedef struct
    int32_t      content_length;
    char*        body;   // pointer into the connection buffer (no copy needed)
 
-   int32_t state;
-   char*   request_start;
-   char*   request_end;
-   char*   schema_start;
-   char*   schema_end;
-   char*   method_end;
-   char*   uri_start;
-   char*   uri_end;
+   int32_t            state;
+   char*              request_start;
+   char*              request_end;
+   char*              schema_start;
+   char*              schema_end;
+   char*              method_end;
+   char*              uri_start;
+   char*              uri_end;
    sand_string_view_t uri_view;
-
 
    int32_t http_major;
    int32_t http_minor;
