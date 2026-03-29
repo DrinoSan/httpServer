@@ -582,7 +582,6 @@ void test_http11_conflicting_content_length_and_transfer_encoding( void )
 
    // Once implemented, Transfer-Encoding takes precedence:
    TEST_ASSERT_EQUAL( PARSE_OK, res );
-   TEST_ASSERT_EQUAL( 1, 0 );
    // Content-Length should be ignored/removed when Transfer-Encoding is present
    (void)res;
 }

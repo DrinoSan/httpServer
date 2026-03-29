@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "HttpHeader.h"
@@ -41,23 +42,25 @@ typedef struct
    HttpHeader_t headers[ MAX_HEADERS ];
    int32_t      header_count;
    int32_t      content_length;
-   char*        body;   // pointer into the connection buffer (no copy needed)
+   bool         ignore_content_length;   // Should be set if content-length and
+                                         // transfer_encoding is set
+   char* body;   // pointer into the connection buffer (no copy needed)
 
-   int32_t            state;
-   char*              request_start;
-   char*              request_end;
+   int32_t state;
+   char*   request_start;
+   char*   request_end;
 
-   char*              schema_start;
-   char*              schema_end;
+   char* schema_start;
+   char* schema_end;
 
-   char*              method_end;
+   char* method_end;
 
    char*              uri_start;
    char*              uri_end;
    sand_string_view_t uri_view;
 
-   char*              host_start;
-   char*              host_end;
+   char* host_start;
+   char* host_end;
 
    int32_t http_major;
    int32_t http_minor;
@@ -65,7 +68,7 @@ typedef struct
 
 } HttpRequest_t;
 
-const sand_string_view_t* http_request_find_header( const HttpRequest_t* request,
-                                              const char*          name );
+const sand_string_view_t*
+http_request_find_header( const HttpRequest_t* request, const char* name );
 
 void http_request_showMe( const HttpRequest_t* request );

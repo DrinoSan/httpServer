@@ -819,6 +819,8 @@ ParseResult_t http_parser_parse_request( char* buffer, int32_t header_len,
       // Trimming whitespaces
       sand_string_trim_cstr( request->headers[ idx ].name, 0 );
 
+
+
       // header value handling - For the value we use a string_view into the
       // connection buffer
       int32_t value_len                  = eol - ( colon + 2 );
