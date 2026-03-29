@@ -38,7 +38,7 @@ void test_parse_valid_get_request( void )
                                   "Host: localhost\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_GET, req.method_int );
@@ -58,7 +58,7 @@ void test_parse_multiple_headers( void )
                                   "Connection: keep-alive\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL_STRING( "host", req.headers[ 0 ].name );
@@ -80,7 +80,7 @@ void test_headers_stored_lowercase( void )
                                   "Content-Type: text/plain\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL_STRING( "content-type", req.headers[ 1 ].name );
@@ -97,7 +97,7 @@ void test_header_without_colon_returns_error( void )
                                   "BadHeaderNoColon\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_ERROR_INVALID_HEADERS, res );
 }
@@ -112,7 +112,7 @@ void test_request_with_no_headers_http11( void )
    int len = build_request( buf, "GET / HTTP/1.1\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_ERROR_MISSING_HOST, res );
    TEST_ASSERT_EQUAL( 0, req.header_count );
@@ -127,7 +127,7 @@ void test_request_with_no_headers_http10( void )
    int len = build_request( buf, "GET / HTTP/1.0\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( 0, req.header_count );
@@ -144,7 +144,7 @@ void test_parse_post_with_content_length( void )
                                   "Content-Length: 13\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_POST, req.method_int );
@@ -167,7 +167,7 @@ void test_http11_missing_host_header_should_error( void )
                                   "Accept: text/html\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_NOT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( PARSE_ERROR_MISSING_HOST, res );
@@ -186,7 +186,7 @@ void test_http11_chunked_transfer_encoding_header( void )
                                   "Transfer-Encoding: chunked\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL_STRING( "transfer-encoding", req.headers[ 1 ].name );
@@ -211,7 +211,7 @@ void test_http11_obs_fold_multiline_header( void )
                                   " continued-value\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    // Once implemented, the folded value should be merged:
    // TEST_ASSERT_EQUAL( PARSE_OK, res );
@@ -235,7 +235,7 @@ void test_http11_absolute_form_uri( void )
                                   "Host: www.example.com\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_GET, req.method_int );
@@ -256,7 +256,7 @@ void test_http11_absolute_form_uri_no_path( void )
                                   "Host: www.example.com\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_GET, req.method_int );
@@ -276,7 +276,7 @@ void test_http11_absolute_form_uri_https( void )
                                   "Host: secure.example.com\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_GET, req.method_int );
@@ -296,7 +296,7 @@ void test_http11_absolute_form_uri_with_port( void )
                                   "Host: example.com:8080\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_GET, req.method_int );
@@ -315,7 +315,7 @@ void test_http11_absolute_form_uri_with_port_no_path( void )
                                   "Host: example.com:3000\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_GET, req.method_int );
@@ -334,7 +334,7 @@ void test_http11_absolute_form_uri_deep_path( void )
                                   "Content-Length: 0\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_POST, req.method_int );
@@ -352,7 +352,7 @@ void test_http11_absolute_form_uri_with_query( void )
                                   "Host: example.com\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_GET, req.method_int );
@@ -373,7 +373,7 @@ void test_http11_connection_close_header( void )
                                   "Connection: close\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL_STRING( "connection", req.headers[ 1 ].name );
@@ -394,7 +394,7 @@ void test_parse_head_request( void )
                                   "Host: localhost\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_UNKNOWN, req.method_int );
@@ -413,7 +413,7 @@ void test_parse_put_request( void )
                                   "Content-Length: 5\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_PUT, req.method_int );
@@ -430,7 +430,7 @@ void test_parse_delete_request( void )
                                   "Host: localhost\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_DELETE, req.method_int );
@@ -451,7 +451,7 @@ void test_http11_header_value_whitespace_trimming( void )
                                   "Accept:  text/html \r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    assert_string_view_equal( "localhost", req.headers[ 0 ].value );
@@ -471,7 +471,7 @@ void test_http11_malformed_request_line_missing_version( void )
                                   "Host: localhost\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_ERROR_MALFORMED_REQUEST_LINE, res );
    (void)res;
@@ -489,7 +489,7 @@ void test_http11_malformed_request_line_missing_method( void )
                                   "Host: localhost\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_ERROR_MALFORMED_REQUEST_LINE, res );
    (void)res;
@@ -506,7 +506,7 @@ void test_http11_empty_request_line( void )
    int len = build_request( buf, "\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    // Once implemented:
    TEST_ASSERT_EQUAL( PARSE_ERROR_MALFORMED_REQUEST_LINE, res );
@@ -531,7 +531,7 @@ void test_http11_uri_too_long( void )
    snprintf( raw, sizeof( raw ), "GET %s HTTP/1.1\r\nHost: localhost\r\n\r\n", long_uri );
 
    int len = build_request( buf, raw );
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_ERROR_PATH_TOO_LONG, res );
    (void)res;
@@ -555,7 +555,7 @@ void test_http11_header_fields_too_large( void )
              "GET / HTTP/1.1\r\nHost: localhost\r\n%s: value\r\n\r\n", long_name );
 
    int len = build_request( buf, raw );
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_NOT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( PARSE_ERROR_HEADER_NAME_TOO_LONG, res );
@@ -578,7 +578,7 @@ void test_http11_conflicting_content_length_and_transfer_encoding( void )
                                   "Transfer-Encoding: chunked\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    // Once implemented, Transfer-Encoding takes precedence:
    TEST_ASSERT_EQUAL( PARSE_OK, res );
@@ -600,7 +600,7 @@ void test_http11_length_required_for_body( void )
                                   "Host: localhost\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    // Parser parses headers fine, but the server layer should detect
    // that a POST has no length indication and respond 411
@@ -620,7 +620,7 @@ void test_http10_no_host_required( void )
    int len = build_request( buf, "GET / HTTP/1.0\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( 1000, req.version_int );
@@ -637,7 +637,7 @@ void test_http11_unsupported_version( void )
                                   "Host: localhost\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    // Currently parses fine — version is just stored as a string
    // Once implemented, should reject unsupported versions:
@@ -660,7 +660,7 @@ void test_http11_multiple_content_length_must_agree( void )
                                   "Content-Length: 20\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    // Once implemented:
    // TEST_ASSERT_NOT_EQUAL( PARSE_OK, res );
@@ -680,7 +680,7 @@ void test_http11_reject_space_before_colon_in_header( void )
                                   "Host : localhost\r\n"
                                   "\r\n" );
 
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    // Once implemented:
    TEST_ASSERT_EQUAL( PARSE_ERROR_INVALID_HEADERS, res );
@@ -707,7 +707,7 @@ void test_http11_too_many_headers( void )
    off += snprintf( raw + off, sizeof( raw ) - off, "\r\n" );
 
    int len = build_request( buf, raw );
-   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+   ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_NOT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( MAX_HEADERS, req.header_count );

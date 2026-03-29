@@ -15,5 +15,5 @@ typedef enum
    PARSE_ERROR_HEADER_NAME_TOO_LONG,
 } ParseResult_t;
 
-ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
+ParseResult_t http_parser_parse_request( char* buffer, int32_t header_len,
                                          HttpRequest_t* request );

@@ -47,8 +47,6 @@
 void          http_parser_sanitize_absolut_path( char* path );
 bool          http_parser_is_valid_version( int32_t version );
 bool          http_parser_is_valid_path( const char* path );
-ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
-                                              char* start, const char* end );
 
 bool http_parser_is_conflicting_content_length_and_transfer_encoding(
     const HttpRequest_t* request );
@@ -731,7 +729,7 @@ done:
 }
 
 //------------------------------------------------------------------------------
-ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
+ParseResult_t http_parser_parse_request( char* buffer, int32_t header_len,
                                          HttpRequest_t* request )
 {
    // -4 because i dont need the \r\n\r\n
