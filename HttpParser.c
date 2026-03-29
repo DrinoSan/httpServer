@@ -48,7 +48,7 @@ void          http_parser_sanitize_absolut_path( char* path );
 bool          http_parser_is_valid_version( int32_t version );
 bool          http_parser_is_valid_path( const char* path );
 ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
-                                              char* start, char* end );
+                                              char* start, const char* end );
 
 bool http_parser_is_conflicting_content_length_and_transfer_encoding(
     const HttpRequest_t* request );
@@ -57,7 +57,7 @@ void http_parser_resolve_conflicting_content_length_and_transfer_encoding(
 
 // NGINX state machine taken as guideline
 ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
-                                              char* start, char* end )
+                                              char* start, const char* end )
 {
    request->method_int = SAND_HTTP_UNKNOWN;
 
@@ -84,7 +84,9 @@ ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
       sand_spaces_after_digit,
       sand_almost_done,
 
-      sand_host_start
+      sand_host_start,
+      sand_host,
+      sand_host_end,
    } state;
 
    char* pos = start;
@@ -641,8 +643,62 @@ ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
 
       case sand_host_start:
       {
+         request->host_start = pos;
+         state               = sand_host;
          LOG_WARN( "Entered sand_host_start" );
-         assert( false );
+         break;
+      }
+
+      case sand_host:
+      {
+         switch ( ch )
+         {
+         case ' ':
+         {
+            // No path provided i need to default to / i just find some randome one
+            char* slash = request->schema_start;
+            while( *slash != '/' )
+            {
+               slash++;
+            }
+
+            request->uri_start = slash;
+            request->uri_end = slash + 1;
+            request->uri_view.data = request->uri_start;
+            request->uri_view.size = request->uri_end - request->uri_start;
+            state            = sand_http_09;
+            break;
+         }
+         case CR:
+         {
+            return PARSE_ERROR_PATH_TOO_LONG;
+         }
+         case LF:
+         {
+            return PARSE_ERROR_PATH_TOO_LONG;
+         }
+         case '/':
+         {
+            request->host_end = pos;
+            request->host_end--;
+
+            request->uri_start = pos;
+            state              = sand_uri;
+            break;
+         }
+         default:
+         {
+            // Checking if its a printable char
+            // 0x7f is DEL
+            // man ascii
+            if ( ch < 0x20 || ch == 0x7f )
+            {
+               return PARSE_ERROR_MALFORMED_REQUEST_LINE;
+            }
+
+            break;
+         }
+         }
          break;
       }
 
@@ -681,7 +737,6 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
 {
    // -4 because i dont need the \r\n\r\n
    const char* headers_end        = buffer + header_len - 4;
-   char*       request_line_start = buffer;
    char*       request_line_end   = buffer;
    while ( *request_line_end != CR )
    {

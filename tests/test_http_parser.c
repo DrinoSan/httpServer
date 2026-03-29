@@ -223,24 +223,141 @@ void test_http11_obs_fold_multiline_header( void )
 //------------------------------------------------------------------------------
 // HTTP/1.1: must parse request with absolute-form URI (RFC 7230 section 5.3.2)
 // e.g. GET http://www.example.com/path HTTP/1.1
+// The parser state machine goes: sand_schema -> sand_schema_slash ->
+// sand_schema_slash_slash -> sand_host_start (needs implementation)
+// sand_host_start must skip the authority (host[:port]) and land on the path
 void test_http11_absolute_form_uri( void )
 {
-   // State machine hits sand_host_start which is not yet implemented
-   TEST_IGNORE_MESSAGE( "TODO: Implement sand_host_start state for absolute-form URIs" );
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   int len = build_request( buf, "GET http://www.example.com/index.html HTTP/1.1\r\n"
+                                  "Host: www.example.com\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   TEST_ASSERT_EQUAL( PARSE_OK, res );
+   TEST_ASSERT_EQUAL( SAND_HTTP_GET, req.method_int );
+   // The extracted path should be just the path portion, not the full URI
+   assert_string_view_equal( "/index.html", req.uri_view );
+   TEST_ASSERT_EQUAL( 1001, req.version_int );
 }
 
 //------------------------------------------------------------------------------
 // HTTP/1.1: absolute-form URI with no trailing path defaults to "/"
+// e.g. GET http://www.example.com HTTP/1.1 -> path should be "/"
 void test_http11_absolute_form_uri_no_path( void )
 {
-   TEST_IGNORE_MESSAGE( "TODO: Implement sand_host_start state for absolute-form URIs" );
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   int len = build_request( buf, "GET http://www.example.com HTTP/1.1\r\n"
+                                  "Host: www.example.com\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   TEST_ASSERT_EQUAL( PARSE_OK, res );
+   TEST_ASSERT_EQUAL( SAND_HTTP_GET, req.method_int );
+   // When no path follows the authority, default to "/"
+   assert_string_view_equal( "/", req.uri_view );
+   TEST_ASSERT_EQUAL( 1001, req.version_int );
 }
 
 //------------------------------------------------------------------------------
 // HTTP/1.1: absolute-form URI with https scheme
 void test_http11_absolute_form_uri_https( void )
 {
-   TEST_IGNORE_MESSAGE( "TODO: Implement sand_host_start state for absolute-form URIs" );
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   int len = build_request( buf, "GET https://secure.example.com/login HTTP/1.1\r\n"
+                                  "Host: secure.example.com\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   TEST_ASSERT_EQUAL( PARSE_OK, res );
+   TEST_ASSERT_EQUAL( SAND_HTTP_GET, req.method_int );
+   assert_string_view_equal( "/login", req.uri_view );
+   TEST_ASSERT_EQUAL( 1001, req.version_int );
+}
+
+//------------------------------------------------------------------------------
+// HTTP/1.1: absolute-form URI with port number in authority
+// e.g. GET http://example.com:8080/api/data HTTP/1.1
+void test_http11_absolute_form_uri_with_port( void )
+{
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   int len = build_request( buf, "GET http://example.com:8080/api/data HTTP/1.1\r\n"
+                                  "Host: example.com:8080\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   TEST_ASSERT_EQUAL( PARSE_OK, res );
+   TEST_ASSERT_EQUAL( SAND_HTTP_GET, req.method_int );
+   assert_string_view_equal( "/api/data", req.uri_view );
+}
+
+//------------------------------------------------------------------------------
+// HTTP/1.1: absolute-form URI with port but no trailing path
+// e.g. GET http://example.com:3000 HTTP/1.1 -> path should be "/"
+void test_http11_absolute_form_uri_with_port_no_path( void )
+{
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   int len = build_request( buf, "GET http://example.com:3000 HTTP/1.1\r\n"
+                                  "Host: example.com:3000\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   TEST_ASSERT_EQUAL( PARSE_OK, res );
+   TEST_ASSERT_EQUAL( SAND_HTTP_GET, req.method_int );
+   assert_string_view_equal( "/", req.uri_view );
+}
+
+//------------------------------------------------------------------------------
+// HTTP/1.1: absolute-form URI with deep nested path
+void test_http11_absolute_form_uri_deep_path( void )
+{
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   int len = build_request( buf, "POST http://api.example.com/v1/users/42/profile HTTP/1.1\r\n"
+                                  "Host: api.example.com\r\n"
+                                  "Content-Length: 0\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   TEST_ASSERT_EQUAL( PARSE_OK, res );
+   TEST_ASSERT_EQUAL( SAND_HTTP_POST, req.method_int );
+   assert_string_view_equal( "/v1/users/42/profile", req.uri_view );
+}
+
+//------------------------------------------------------------------------------
+// HTTP/1.1: absolute-form URI with query string
+void test_http11_absolute_form_uri_with_query( void )
+{
+   char           buf[ 4096 ];
+   HttpRequest_t  req = { 0 };
+
+   int len = build_request( buf, "GET http://example.com/search?q=hello&lang=en HTTP/1.1\r\n"
+                                  "Host: example.com\r\n"
+                                  "\r\n" );
+
+   ParseResult_t res = http_parser_parse_headers( buf, len, &req );
+
+   TEST_ASSERT_EQUAL( PARSE_OK, res );
+   TEST_ASSERT_EQUAL( SAND_HTTP_GET, req.method_int );
+   // Path + query string should be preserved
+   assert_string_view_equal( "/search?q=hello&lang=en", req.uri_view );
 }
 
 //------------------------------------------------------------------------------
@@ -618,6 +735,10 @@ int main( void )
    RUN_TEST( test_http11_absolute_form_uri );
    RUN_TEST( test_http11_absolute_form_uri_no_path );
    RUN_TEST( test_http11_absolute_form_uri_https );
+   RUN_TEST( test_http11_absolute_form_uri_with_port );
+   RUN_TEST( test_http11_absolute_form_uri_with_port_no_path );
+   RUN_TEST( test_http11_absolute_form_uri_deep_path );
+   RUN_TEST( test_http11_absolute_form_uri_with_query );
    RUN_TEST( test_http11_connection_close_header );
    RUN_TEST( test_parse_head_request );
    RUN_TEST( test_parse_put_request );

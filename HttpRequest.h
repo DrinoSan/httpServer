@@ -46,12 +46,18 @@ typedef struct
    int32_t            state;
    char*              request_start;
    char*              request_end;
+
    char*              schema_start;
    char*              schema_end;
+
    char*              method_end;
+
    char*              uri_start;
    char*              uri_end;
    sand_string_view_t uri_view;
+
+   char*              host_start;
+   char*              host_end;
 
    int32_t http_major;
    int32_t http_minor;
