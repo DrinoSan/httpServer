@@ -645,7 +645,6 @@ ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
       {
          request->host_start = pos;
          state               = sand_host;
-         LOG_WARN( "Entered sand_host_start" );
          break;
       }
 
