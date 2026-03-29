@@ -7,6 +7,9 @@
 void setUp( void ) {}
 void tearDown( void ) {}
 
+// Helper: set a sand_string_view_t from a string literal
+#define SET_SV( sv, str ) do { (sv).data = (char*)(str); (sv).size = strlen(str); } while(0)
+
 // ===== Existing-functionality tests (should pass) =====
 
 //------------------------------------------------------------------------------
@@ -176,7 +179,7 @@ void test_http11_response_connection_close( void )
    // Set a Connection: close header on the response
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Connection" );
-   strcpy( resp.headers[ 0 ].value, "close" );
+   SET_SV( resp.headers[ 0 ].value, "close" );
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -199,7 +202,7 @@ void test_http11_serialize_custom_headers( void )
    resp.body = "test";
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "X-Custom" );
-   strcpy( resp.headers[ 0 ].value, "my-value" );
+   SET_SV( resp.headers[ 0 ].value, "my-value" );
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -272,7 +275,7 @@ void test_http11_201_created_response( void )
    // Location header pointing to the new resource
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Location" );
-   strcpy( resp.headers[ 0 ].value, "/resource/42" );
+   SET_SV( resp.headers[ 0 ].value, "/resource/42" );
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -319,7 +322,7 @@ void test_http11_301_redirect( void )
    resp.body = NULL;
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Location" );
-   strcpy( resp.headers[ 0 ].value, "https://example.com/new-path" );
+   SET_SV( resp.headers[ 0 ].value, "https://example.com/new-path" );
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -343,7 +346,7 @@ void test_http11_302_redirect( void )
    resp.body = NULL;
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Location" );
-   strcpy( resp.headers[ 0 ].value, "/login" );
+   SET_SV( resp.headers[ 0 ].value, "/login" );
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -385,7 +388,7 @@ void test_http11_405_method_not_allowed_response( void )
    resp.body = NULL;
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Allow" );
-   strcpy( resp.headers[ 0 ].value, "GET, HEAD" );
+   SET_SV( resp.headers[ 0 ].value, "GET, HEAD" );
 
    Sand_string_t str;
    sand_string_create( &str );

@@ -7,6 +7,18 @@
 void setUp( void ) {}
 void tearDown( void ) {}
 
+//------------------------------------------------------------------------------
+// Helper: set a sand_string_view_t from a string literal
+#define SET_SV( sv, str ) do { (sv).data = (char*)(str); (sv).size = strlen(str); } while(0)
+
+// Helper: assert that a sand_string_view_t equals a C-string
+static void assert_string_view_equal( const char* expected,
+                                      sand_string_view_t view )
+{
+   TEST_ASSERT_EQUAL( strlen( expected ), view.size );
+   TEST_ASSERT_EQUAL_MEMORY( expected, view.data, view.size );
+}
+
 // ===== Existing-functionality tests (should pass) =====
 
 //------------------------------------------------------------------------------
@@ -15,12 +27,12 @@ void test_find_existing_header( void )
    HttpRequest_t req = { 0 };
    req.header_count = 2;
    strcpy( req.headers[ 0 ].name, "host" );
-   strcpy( req.headers[ 0 ].value, "localhost" );
+   SET_SV( req.headers[ 0 ].value, "localhost" );
    strcpy( req.headers[ 1 ].name, "content-type" );
-   strcpy( req.headers[ 1 ].value, "text/html" );
+   SET_SV( req.headers[ 1 ].value, "text/html" );
 
-   const char* val = http_request_find_header( &req, "host" );
-   TEST_ASSERT_EQUAL_STRING( "localhost", val );
+   const sand_string_view_t* val = http_request_find_header( &req, "host" );
+   assert_string_view_equal( "localhost", *val );
 }
 
 //------------------------------------------------------------------------------
@@ -29,9 +41,9 @@ void test_find_nonexistent_header( void )
    HttpRequest_t req = { 0 };
    req.header_count = 1;
    strcpy( req.headers[ 0 ].name, "host" );
-   strcpy( req.headers[ 0 ].value, "localhost" );
+   SET_SV( req.headers[ 0 ].value, "localhost" );
 
-   const char* val = http_request_find_header( &req, "accept" );
+   const sand_string_view_t* val = http_request_find_header( &req, "accept" );
    TEST_ASSERT_NULL( val );
 }
 
@@ -41,7 +53,7 @@ void test_empty_request_returns_null( void )
    HttpRequest_t req = { 0 };
    req.header_count = 0;
 
-   const char* val = http_request_find_header( &req, "host" );
+   const sand_string_view_t* val = http_request_find_header( &req, "host" );
    TEST_ASSERT_NULL( val );
 }
 
@@ -51,14 +63,14 @@ void test_find_last_header( void )
    HttpRequest_t req = { 0 };
    req.header_count = 3;
    strcpy( req.headers[ 0 ].name, "accept" );
-   strcpy( req.headers[ 0 ].value, "text/html" );
+   SET_SV( req.headers[ 0 ].value, "text/html" );
    strcpy( req.headers[ 1 ].name, "host" );
-   strcpy( req.headers[ 1 ].value, "example.com" );
+   SET_SV( req.headers[ 1 ].value, "example.com" );
    strcpy( req.headers[ 2 ].name, "connection" );
-   strcpy( req.headers[ 2 ].value, "keep-alive" );
+   SET_SV( req.headers[ 2 ].value, "keep-alive" );
 
-   const char* val = http_request_find_header( &req, "connection" );
-   TEST_ASSERT_EQUAL_STRING( "keep-alive", val );
+   const sand_string_view_t* val = http_request_find_header( &req, "connection" );
+   assert_string_view_equal( "keep-alive", *val );
 }
 
 // ===== TDD tests for HTTP/1.1 compliance (may fail until implemented) =====
@@ -71,11 +83,11 @@ void test_http11_case_insensitive_header_lookup( void )
    HttpRequest_t req = { 0 };
    req.header_count = 1;
    strcpy( req.headers[ 0 ].name, "content-type" );
-   strcpy( req.headers[ 0 ].value, "text/html" );
+   SET_SV( req.headers[ 0 ].value, "text/html" );
 
    // Parser stores names lowercase, so lookup with lowercase works
-   const char* val = http_request_find_header( &req, "content-type" );
-   TEST_ASSERT_EQUAL_STRING( "text/html", val );
+   const sand_string_view_t* val = http_request_find_header( &req, "content-type" );
+   assert_string_view_equal( "text/html", *val );
 
    // But lookup with mixed case currently fails because strcmp is case-sensitive
    val = http_request_find_header( &req, "Content-Type" );
@@ -93,11 +105,11 @@ void test_http11_duplicate_header_names( void )
    HttpRequest_t req = { 0 };
    req.header_count = 3;
    strcpy( req.headers[ 0 ].name, "host" );
-   strcpy( req.headers[ 0 ].value, "localhost" );
+   SET_SV( req.headers[ 0 ].value, "localhost" );
    strcpy( req.headers[ 1 ].name, "accept" );
-   strcpy( req.headers[ 1 ].value, "text/html" );
+   SET_SV( req.headers[ 1 ].value, "text/html" );
    strcpy( req.headers[ 2 ].name, "accept" );
-   strcpy( req.headers[ 2 ].value, "application/json" );
+   SET_SV( req.headers[ 2 ].value, "application/json" );
 
    // Once implemented, looking up "accept" should return combined value:
    // const char* val = http_request_find_header( &req, "accept" );
@@ -113,10 +125,10 @@ void test_http11_content_length_parsed_to_int( void )
    HttpRequest_t req = { 0 };
    req.header_count = 1;
    strcpy( req.headers[ 0 ].name, "content-length" );
-   strcpy( req.headers[ 0 ].value, "42" );
+   SET_SV( req.headers[ 0 ].value, "42" );
 
-   const char* val = http_request_find_header( &req, "content-length" );
-   TEST_ASSERT_EQUAL_STRING( "42", val );
+   const sand_string_view_t* val = http_request_find_header( &req, "content-length" );
+   assert_string_view_equal( "42", *val );
 
    // TODO: request.content_length should be automatically populated from header
    TEST_IGNORE_MESSAGE( "TODO: Auto-populate content_length field from Content-Length header" );
@@ -130,14 +142,14 @@ void test_http11_expect_100_continue( void )
    HttpRequest_t req = { 0 };
    req.header_count = 3;
    strcpy( req.headers[ 0 ].name, "host" );
-   strcpy( req.headers[ 0 ].value, "localhost" );
+   SET_SV( req.headers[ 0 ].value, "localhost" );
    strcpy( req.headers[ 1 ].name, "content-length" );
-   strcpy( req.headers[ 1 ].value, "1024" );
+   SET_SV( req.headers[ 1 ].value, "1024" );
    strcpy( req.headers[ 2 ].name, "expect" );
-   strcpy( req.headers[ 2 ].value, "100-continue" );
+   SET_SV( req.headers[ 2 ].value, "100-continue" );
 
-   const char* val = http_request_find_header( &req, "expect" );
-   TEST_ASSERT_EQUAL_STRING( "100-continue", val );
+   const sand_string_view_t* val = http_request_find_header( &req, "expect" );
+   assert_string_view_equal( "100-continue", *val );
 
    // Once implemented, server should send "HTTP/1.1 100 Continue\r\n\r\n"
    // before reading the body
@@ -243,7 +255,7 @@ void test_keepalive_http11_default_is_persistent( void )
    strcpy( con.request.version, "HTTP/1.1" );
    con.request.header_count = 1;
    strcpy( con.request.headers[ 0 ].name, "host" );
-   strcpy( con.request.headers[ 0 ].value, "localhost" );
+   SET_SV( con.request.headers[ 0 ].value, "localhost" );
 
    // Once connection_should_keep_alive() is implemented:
    // TEST_ASSERT_TRUE( connection_should_keep_alive( &con ) );
@@ -259,9 +271,9 @@ void test_keepalive_http11_connection_close( void )
    strcpy( con.request.version, "HTTP/1.1" );
    con.request.header_count = 2;
    strcpy( con.request.headers[ 0 ].name, "host" );
-   strcpy( con.request.headers[ 0 ].value, "localhost" );
+   SET_SV( con.request.headers[ 0 ].value, "localhost" );
    strcpy( con.request.headers[ 1 ].name, "connection" );
-   strcpy( con.request.headers[ 1 ].value, "close" );
+   SET_SV( con.request.headers[ 1 ].value, "close" );
 
    // Once connection_should_keep_alive() is implemented:
    // TEST_ASSERT_FALSE( connection_should_keep_alive( &con ) );
@@ -277,9 +289,9 @@ void test_keepalive_http11_explicit_keepalive( void )
    strcpy( con.request.version, "HTTP/1.1" );
    con.request.header_count = 2;
    strcpy( con.request.headers[ 0 ].name, "host" );
-   strcpy( con.request.headers[ 0 ].value, "localhost" );
+   SET_SV( con.request.headers[ 0 ].value, "localhost" );
    strcpy( con.request.headers[ 1 ].name, "connection" );
-   strcpy( con.request.headers[ 1 ].value, "keep-alive" );
+   SET_SV( con.request.headers[ 1 ].value, "keep-alive" );
 
    // TEST_ASSERT_TRUE( connection_should_keep_alive( &con ) );
    TEST_IGNORE_MESSAGE( "TODO: Implement connection_should_keep_alive() — explicit keep-alive in HTTP/1.1" );
@@ -294,7 +306,7 @@ void test_keepalive_http10_default_is_close( void )
    strcpy( con.request.version, "HTTP/1.0" );
    con.request.header_count = 1;
    strcpy( con.request.headers[ 0 ].name, "host" );
-   strcpy( con.request.headers[ 0 ].value, "localhost" );
+   SET_SV( con.request.headers[ 0 ].value, "localhost" );
 
    // TEST_ASSERT_FALSE( connection_should_keep_alive( &con ) );
    TEST_IGNORE_MESSAGE( "TODO: Implement connection_should_keep_alive() — HTTP/1.0 defaults to close" );
@@ -309,9 +321,9 @@ void test_keepalive_http10_explicit_keepalive( void )
    strcpy( con.request.version, "HTTP/1.0" );
    con.request.header_count = 2;
    strcpy( con.request.headers[ 0 ].name, "host" );
-   strcpy( con.request.headers[ 0 ].value, "localhost" );
+   SET_SV( con.request.headers[ 0 ].value, "localhost" );
    strcpy( con.request.headers[ 1 ].name, "connection" );
-   strcpy( con.request.headers[ 1 ].value, "keep-alive" );
+   SET_SV( con.request.headers[ 1 ].value, "keep-alive" );
 
    // TEST_ASSERT_TRUE( connection_should_keep_alive( &con ) );
    TEST_IGNORE_MESSAGE( "TODO: Implement connection_should_keep_alive() — HTTP/1.0 + keep-alive header" );
@@ -333,7 +345,7 @@ void test_keepalive_connection_reset( void )
    strcpy( con.request.path, "/old" );
    con.request.header_count = 1;
    strcpy( con.request.headers[ 0 ].name, "host" );
-   strcpy( con.request.headers[ 0 ].value, "localhost" );
+   SET_SV( con.request.headers[ 0 ].value, "localhost" );
 
    // Once connection_reset_for_next_request() is implemented:
    // connection_reset_for_next_request( &con );

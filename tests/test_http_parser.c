@@ -19,8 +19,8 @@ static int build_request( char* buf, const char* raw )
 
 //------------------------------------------------------------------------------
 // Helper: assert that a sand_string_view_t equals a C-string
-static void assert_uri_view_equal( const char* expected,
-                                   sand_string_view_t view )
+static void assert_string_view_equal( const char* expected,
+                                      sand_string_view_t view )
 {
    TEST_ASSERT_EQUAL( strlen( expected ), view.size );
    TEST_ASSERT_EQUAL_MEMORY( expected, view.data, view.size );
@@ -42,7 +42,7 @@ void test_parse_valid_get_request( void )
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_GET, req.method_int );
-   assert_uri_view_equal( "/index.html", req.uri_view );
+   assert_string_view_equal( "/index.html", req.uri_view );
    TEST_ASSERT_EQUAL( 1001, req.version_int );
 }
 
@@ -62,11 +62,11 @@ void test_parse_multiple_headers( void )
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL_STRING( "host", req.headers[ 0 ].name );
-   TEST_ASSERT_EQUAL_STRING( "example.com", req.headers[ 0 ].value );
+   assert_string_view_equal( "example.com", req.headers[ 0 ].value );
    TEST_ASSERT_EQUAL_STRING( "accept", req.headers[ 1 ].name );
-   TEST_ASSERT_EQUAL_STRING( "text/html", req.headers[ 1 ].value );
+   assert_string_view_equal( "text/html", req.headers[ 1 ].value );
    TEST_ASSERT_EQUAL_STRING( "connection", req.headers[ 2 ].name );
-   TEST_ASSERT_EQUAL_STRING( "keep-alive", req.headers[ 2 ].value );
+   assert_string_view_equal( "keep-alive", req.headers[ 2 ].value );
 }
 
 //------------------------------------------------------------------------------
@@ -148,9 +148,9 @@ void test_parse_post_with_content_length( void )
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_POST, req.method_int );
-   assert_uri_view_equal( "/data", req.uri_view );
+   assert_string_view_equal( "/data", req.uri_view );
    TEST_ASSERT_EQUAL_STRING( "content-length", req.headers[ 1 ].name );
-   TEST_ASSERT_EQUAL_STRING( "13", req.headers[ 1 ].value );
+   assert_string_view_equal( "13", req.headers[ 1 ].value );
 }
 
 // ===== TDD tests for HTTP/1.1 compliance (may fail until implemented) =====
@@ -190,7 +190,7 @@ void test_http11_chunked_transfer_encoding_header( void )
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL_STRING( "transfer-encoding", req.headers[ 1 ].name );
-   TEST_ASSERT_EQUAL_STRING( "chunked", req.headers[ 1 ].value );
+   assert_string_view_equal( "chunked", req.headers[ 1 ].value );
 
    // TODO: actual chunked body parsing is not yet implemented
    TEST_IGNORE_MESSAGE( "TODO: Implement chunked transfer-encoding body parsing" );
@@ -260,7 +260,7 @@ void test_http11_connection_close_header( void )
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL_STRING( "connection", req.headers[ 1 ].name );
-   TEST_ASSERT_EQUAL_STRING( "close", req.headers[ 1 ].value );
+   assert_string_view_equal( "close", req.headers[ 1 ].value );
 
    // TODO: server should track connection persistence state
    TEST_IGNORE_MESSAGE( "TODO: Track connection persistence (keep-alive vs close)" );
@@ -281,7 +281,7 @@ void test_parse_head_request( void )
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_UNKNOWN, req.method_int );
-   assert_uri_view_equal( "/index.html", req.uri_view );
+   assert_string_view_equal( "/index.html", req.uri_view );
 }
 
 //------------------------------------------------------------------------------
@@ -317,7 +317,7 @@ void test_parse_delete_request( void )
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
    TEST_ASSERT_EQUAL( SAND_HTTP_DELETE, req.method_int );
-   assert_uri_view_equal( "/resource/42", req.uri_view );
+   assert_string_view_equal( "/resource/42", req.uri_view );
 }
 
 //------------------------------------------------------------------------------
@@ -337,8 +337,8 @@ void test_http11_header_value_whitespace_trimming( void )
    ParseResult_t res = http_parser_parse_headers( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
-   TEST_ASSERT_EQUAL_STRING( "localhost", req.headers[ 0 ].value );
-   TEST_ASSERT_EQUAL_STRING( "text/html", req.headers[ 1 ].value );
+   assert_string_view_equal( "localhost", req.headers[ 0 ].value );
+   assert_string_view_equal( "text/html", req.headers[ 1 ].value );
 }
 
 //------------------------------------------------------------------------------
