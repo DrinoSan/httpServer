@@ -764,20 +764,18 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
          }
       }
 
-      // We are not in C++ land with std::string need to null
-      // terminate myself and i am happy to do so
-      request->headers[ idx ].name[ name_len ] = '\0';
 
       // Trimming whitespaces
       sand_string_trim_cstr( request->headers[ idx ].name, 0 );
 
-      // header value handling
+      // header value handling - For the value we use a string_view into the connection buffer
       int32_t value_len = eol - ( colon + 2 );
-      memcpy( request->headers[ idx ].value, colon + 2, value_len );
-      request->headers[ idx ].value[ value_len ] = '\0';
+      request->headers[ idx ].value.data = colon + 2;
+      request->headers[ idx ].value.size = value_len;
+      LOG_WARN("--------HEADER Value: %.*s", (int)request->headers[ idx ].value.size,request->headers[ idx ].value.data );
 
       // Trimming whitespaces
-      sand_string_trim_cstr( request->headers[ idx ].value, 0 );
+      sand_string_view_trim( &request->headers[ idx ].value, 0 );
 
       line = eol + 2;   // next line
       idx++;
@@ -788,6 +786,15 @@ ParseResult_t http_parser_parse_headers( char* buffer, int32_t header_len,
          return PARSE_ERROR_TOO_MANY_HEADERS;
       }
    }
+
+   LOG_WARN("----------------------");
+   for( int i = 0; i < request->header_count; i++ )
+   {
+      LOG_WARN("HEADER Name:  %s", request->headers[ i ].name );
+      LOG_WARN("HEADER Value: %.*s", (int)request->headers[ i ].value.size,request->headers[ i ].value.data );
+      LOG_WARN("++++++++++++++");
+   }
+   LOG_WARN("----------------------");
 
    // Further checks on headers
    if ( request->version_int == 1001 )

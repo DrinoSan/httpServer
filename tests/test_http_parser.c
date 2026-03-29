@@ -416,9 +416,7 @@ void test_http11_uri_too_long( void )
    int len = build_request( buf, raw );
    ParseResult_t res = http_parser_parse_headers( buf, len, &req );
 
-   // Once implemented:
-   // TEST_ASSERT_EQUAL( PARSE_ERROR_PATH_TOO_LONG, res );
-   TEST_IGNORE_MESSAGE( "TODO: Return PARSE_ERROR_PATH_TOO_LONG for URIs exceeding limit" );
+   TEST_ASSERT_EQUAL( PARSE_ERROR_PATH_TOO_LONG, res );
    (void)res;
 }
 
@@ -442,9 +440,8 @@ void test_http11_header_fields_too_large( void )
    int len = build_request( buf, raw );
    ParseResult_t res = http_parser_parse_headers( buf, len, &req );
 
-   // Once implemented, should reject or truncate safely:
-   // TEST_ASSERT_NOT_EQUAL( PARSE_OK, res );
-   TEST_IGNORE_MESSAGE( "TODO: Reject requests with header fields exceeding MAX_HEADER_NAME_LEN/MAX_HEADER_VALUE_LEN" );
+   TEST_ASSERT_NOT_EQUAL( PARSE_OK, res );
+   TEST_ASSERT_EQUAL( PARSE_ERROR_HEADER_NAME_TOO_LONG, res );
    (void)res;
 }
 
@@ -467,9 +464,9 @@ void test_http11_conflicting_content_length_and_transfer_encoding( void )
    ParseResult_t res = http_parser_parse_headers( buf, len, &req );
 
    // Once implemented, Transfer-Encoding takes precedence:
-   // TEST_ASSERT_EQUAL( PARSE_OK, res );
+   TEST_ASSERT_EQUAL( PARSE_OK, res );
+   TEST_ASSERT_EQUAL( 1, 0 );
    // Content-Length should be ignored/removed when Transfer-Encoding is present
-   TEST_IGNORE_MESSAGE( "TODO: Handle conflicting Content-Length and Transfer-Encoding headers" );
    (void)res;
 }
 

@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "HttpHeader.h"
+#include "sandlib/Sand_string_view.h"
 
 // clang-format off
 // Using power of twos because that way only one single bit is set in the mask
@@ -29,13 +30,6 @@
 #define SAND_HTTP_ALL_METHODS 0x0001FFFF   // If we double SAND_HTTP_CONNECT by 2 then subtract one we get the ALL_Methos
 // By Doubeling we shift the one bit to the left (Division would shift right) Then if we subtract one if fills all the bits after with one
 // clang-format on
-
-// sand_string_view
-typedef struct
-{
-   char*  data;
-   size_t size;
-} sand_string_view_t;
 
 typedef struct
 {
@@ -65,7 +59,7 @@ typedef struct
 
 } HttpRequest_t;
 
-const char* http_request_find_header( const HttpRequest_t* request,
-                                      const char*          name );
+const sand_string_view_t* http_request_find_header( const HttpRequest_t* request,
+                                              const char*          name );
 
 void http_request_showMe( const HttpRequest_t* request );
