@@ -381,6 +381,180 @@ void test_keepalive_response_echoes_connection_close( void )
    (void)con;
 }
 
+// ===== Extended tests for small-project readiness =====
+
+//------------------------------------------------------------------------------
+// Find header among many headers
+void test_find_header_among_many( void )
+{
+   HttpRequest_t req = { 0 };
+   req.header_count = 5;
+   strcpy( req.headers[ 0 ].name, "host" );
+   SET_SV( req.headers[ 0 ].value, "localhost" );
+   strcpy( req.headers[ 1 ].name, "accept" );
+   SET_SV( req.headers[ 1 ].value, "text/html" );
+   strcpy( req.headers[ 2 ].name, "content-type" );
+   SET_SV( req.headers[ 2 ].value, "application/json" );
+   strcpy( req.headers[ 3 ].name, "authorization" );
+   SET_SV( req.headers[ 3 ].value, "Bearer abc123" );
+   strcpy( req.headers[ 4 ].name, "user-agent" );
+   SET_SV( req.headers[ 4 ].value, "TestBot/1.0" );
+
+   const sand_string_view_t* val;
+
+   val = http_request_find_header( &req, "authorization" );
+   TEST_ASSERT_NOT_NULL( val );
+   assert_string_view_equal( "Bearer abc123", *val );
+
+   val = http_request_find_header( &req, "user-agent" );
+   TEST_ASSERT_NOT_NULL( val );
+   assert_string_view_equal( "TestBot/1.0", *val );
+
+   val = http_request_find_header( &req, "content-type" );
+   TEST_ASSERT_NOT_NULL( val );
+   assert_string_view_equal( "application/json", *val );
+}
+
+//------------------------------------------------------------------------------
+// Find first header when it's the only one
+void test_find_single_header( void )
+{
+   HttpRequest_t req = { 0 };
+   req.header_count = 1;
+   strcpy( req.headers[ 0 ].name, "content-length" );
+   SET_SV( req.headers[ 0 ].value, "42" );
+
+   const sand_string_view_t* val = http_request_find_header( &req, "content-length" );
+   TEST_ASSERT_NOT_NULL( val );
+   assert_string_view_equal( "42", *val );
+}
+
+//------------------------------------------------------------------------------
+// Multiple different headers, none match the search
+void test_find_none_matching_among_many( void )
+{
+   HttpRequest_t req = { 0 };
+   req.header_count = 3;
+   strcpy( req.headers[ 0 ].name, "host" );
+   SET_SV( req.headers[ 0 ].value, "localhost" );
+   strcpy( req.headers[ 1 ].name, "accept" );
+   SET_SV( req.headers[ 1 ].value, "text/html" );
+   strcpy( req.headers[ 2 ].name, "connection" );
+   SET_SV( req.headers[ 2 ].value, "keep-alive" );
+
+   const sand_string_view_t* val = http_request_find_header( &req, "x-custom" );
+   TEST_ASSERT_NULL( val );
+}
+
+//------------------------------------------------------------------------------
+// Find header with hyphenated name
+void test_find_hyphenated_header_name( void )
+{
+   HttpRequest_t req = { 0 };
+   req.header_count = 2;
+   strcpy( req.headers[ 0 ].name, "host" );
+   SET_SV( req.headers[ 0 ].value, "localhost" );
+   strcpy( req.headers[ 1 ].name, "x-request-id" );
+   SET_SV( req.headers[ 1 ].value, "req-abc-123" );
+
+   const sand_string_view_t* val = http_request_find_header( &req, "x-request-id" );
+   TEST_ASSERT_NOT_NULL( val );
+   assert_string_view_equal( "req-abc-123", *val );
+}
+
+//------------------------------------------------------------------------------
+// Verify header value with colon (e.g. host:port)
+void test_find_header_value_with_colon( void )
+{
+   HttpRequest_t req = { 0 };
+   req.header_count = 1;
+   strcpy( req.headers[ 0 ].name, "host" );
+   SET_SV( req.headers[ 0 ].value, "localhost:8080" );
+
+   const sand_string_view_t* val = http_request_find_header( &req, "host" );
+   TEST_ASSERT_NOT_NULL( val );
+   assert_string_view_equal( "localhost:8080", *val );
+}
+
+//------------------------------------------------------------------------------
+// Header name matching is exact — partial name should not match
+void test_partial_header_name_no_match( void )
+{
+   HttpRequest_t req = { 0 };
+   req.header_count = 1;
+   strcpy( req.headers[ 0 ].name, "content-type" );
+   SET_SV( req.headers[ 0 ].value, "text/html" );
+
+   // "content" is a prefix of "content-type" but should not match
+   const sand_string_view_t* val = http_request_find_header( &req, "content" );
+   TEST_ASSERT_NULL( val );
+
+   // "content-types" extends "content-type" but should not match
+   val = http_request_find_header( &req, "content-types" );
+   TEST_ASSERT_NULL( val );
+}
+
+//------------------------------------------------------------------------------
+// Find header returns first occurrence when multiple exist with same name
+void test_find_header_returns_first_occurrence( void )
+{
+   HttpRequest_t req = { 0 };
+   req.header_count = 3;
+   strcpy( req.headers[ 0 ].name, "accept" );
+   SET_SV( req.headers[ 0 ].value, "text/html" );
+   strcpy( req.headers[ 1 ].name, "accept" );
+   SET_SV( req.headers[ 1 ].value, "application/json" );
+   strcpy( req.headers[ 2 ].name, "host" );
+   SET_SV( req.headers[ 2 ].value, "localhost" );
+
+   const sand_string_view_t* val = http_request_find_header( &req, "accept" );
+   TEST_ASSERT_NOT_NULL( val );
+   // Should return the first occurrence
+   assert_string_view_equal( "text/html", *val );
+}
+
+//------------------------------------------------------------------------------
+// Verify header_count correctly reflects state
+void test_header_count_reflects_entries( void )
+{
+   HttpRequest_t req = { 0 };
+   TEST_ASSERT_EQUAL( 0, req.header_count );
+
+   req.header_count = 4;
+   strcpy( req.headers[ 0 ].name, "host" );
+   SET_SV( req.headers[ 0 ].value, "a" );
+   strcpy( req.headers[ 1 ].name, "accept" );
+   SET_SV( req.headers[ 1 ].value, "b" );
+   strcpy( req.headers[ 2 ].name, "x-one" );
+   SET_SV( req.headers[ 2 ].value, "c" );
+   strcpy( req.headers[ 3 ].name, "x-two" );
+   SET_SV( req.headers[ 3 ].value, "d" );
+
+   // All four should be findable
+   TEST_ASSERT_NOT_NULL( http_request_find_header( &req, "host" ) );
+   TEST_ASSERT_NOT_NULL( http_request_find_header( &req, "accept" ) );
+   TEST_ASSERT_NOT_NULL( http_request_find_header( &req, "x-one" ) );
+   TEST_ASSERT_NOT_NULL( http_request_find_header( &req, "x-two" ) );
+   TEST_ASSERT_NULL( http_request_find_header( &req, "x-three" ) );
+}
+
+//------------------------------------------------------------------------------
+// Verify empty header value is findable
+void test_find_header_with_empty_value( void )
+{
+   HttpRequest_t req = { 0 };
+   req.header_count = 2;
+   strcpy( req.headers[ 0 ].name, "host" );
+   SET_SV( req.headers[ 0 ].value, "localhost" );
+   strcpy( req.headers[ 1 ].name, "x-empty" );
+   req.headers[ 1 ].value.data = "";
+   req.headers[ 1 ].value.size = 0;
+
+   const sand_string_view_t* val = http_request_find_header( &req, "x-empty" );
+   TEST_ASSERT_NOT_NULL( val );
+   TEST_ASSERT_EQUAL( 0, val->size );
+}
+
 //------------------------------------------------------------------------------
 int main( void )
 {
@@ -407,6 +581,17 @@ int main( void )
    RUN_TEST( test_keepalive_http10_explicit_keepalive );
    RUN_TEST( test_keepalive_connection_reset );
    RUN_TEST( test_keepalive_response_echoes_connection_close );
+
+   // Extended tests for small-project readiness
+   RUN_TEST( test_find_header_among_many );
+   RUN_TEST( test_find_single_header );
+   RUN_TEST( test_find_none_matching_among_many );
+   RUN_TEST( test_find_hyphenated_header_name );
+   RUN_TEST( test_find_header_value_with_colon );
+   RUN_TEST( test_partial_header_name_no_match );
+   RUN_TEST( test_find_header_returns_first_occurrence );
+   RUN_TEST( test_header_count_reflects_entries );
+   RUN_TEST( test_find_header_with_empty_value );
 
    return UNITY_END();
 }

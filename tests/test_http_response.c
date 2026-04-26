@@ -510,6 +510,314 @@ void test_http11_505_version_not_supported_response( void )
    sand_string_destroy( &str );
 }
 
+// ===== Extended tests for small-project readiness =====
+
+//------------------------------------------------------------------------------
+// Verify Content-Length is accurate for various body sizes
+void test_content_length_accuracy_short_body( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 200;
+   strcpy( resp.status_text, "OK" );
+   resp.body = "A";   // 1 char + 1 for "\n" = 2
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "Content-Length: 2\r\n" ) );
+
+   sand_string_destroy( &str );
+}
+
+//------------------------------------------------------------------------------
+void test_content_length_accuracy_medium_body( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 200;
+   strcpy( resp.status_text, "OK" );
+   resp.body = "Hello, World!";   // 13 chars + 1 = 14
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "Content-Length: 14\r\n" ) );
+
+   sand_string_destroy( &str );
+}
+
+//------------------------------------------------------------------------------
+// Verify response body with HTML content
+void test_serialize_html_body( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 200;
+   strcpy( resp.status_text, "OK" );
+   resp.body = "<html><body><h1>Welcome</h1><p>Hello!</p></body></html>";
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "HTTP/1.1 200 OK" ) );
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "<html><body><h1>Welcome</h1>" ) );
+
+   sand_string_destroy( &str );
+}
+
+//------------------------------------------------------------------------------
+// Verify response body with JSON content
+void test_serialize_json_body( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 200;
+   strcpy( resp.status_text, "OK" );
+   resp.body = "{\"status\":\"ok\",\"count\":42}";
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "HTTP/1.1 200 OK" ) );
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "{\"status\":\"ok\",\"count\":42}" ) );
+
+   sand_string_destroy( &str );
+}
+
+//------------------------------------------------------------------------------
+// Verify response with empty string body (not NULL)
+void test_serialize_empty_string_body( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 200;
+   strcpy( resp.status_text, "OK" );
+   resp.body = "";   // empty but not NULL — strlen = 0, +1 = 1
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "Content-Length: 1\r\n" ) );
+
+   sand_string_destroy( &str );
+}
+
+//------------------------------------------------------------------------------
+// Verify 200 status line ends with \r\n
+void test_status_line_ends_with_crlf( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 200;
+   strcpy( resp.status_text, "OK" );
+   resp.body = NULL;
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   // The status line should contain \r\n
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "\r\n" ) );
+
+   sand_string_destroy( &str );
+}
+
+//------------------------------------------------------------------------------
+// Verify 403 Forbidden status code serializes correctly
+void test_serialize_403_forbidden( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 403;
+   strcpy( resp.status_text, "Forbidden" );
+   resp.body = NULL;
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "HTTP/1.1 403 Forbidden" ) );
+
+   sand_string_destroy( &str );
+}
+
+//------------------------------------------------------------------------------
+// Verify 503 Service Unavailable
+void test_serialize_503_service_unavailable( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 503;
+   strcpy( resp.status_text, "Service Unavailable" );
+   resp.body = NULL;
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "HTTP/1.1 503 Service Unavailable" ) );
+
+   sand_string_destroy( &str );
+}
+
+//------------------------------------------------------------------------------
+// Verify response with long body has correct Content-Length
+void test_serialize_long_body_content_length( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 200;
+   strcpy( resp.status_text, "OK" );
+
+   // Build a body of exactly 100 chars
+   char body[ 101 ];
+   memset( body, 'A', 100 );
+   body[ 100 ] = '\0';
+   resp.body = body;   // 100 + 1 = 101
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "Content-Length: 101\r\n" ) );
+
+   sand_string_destroy( &str );
+}
+
+//------------------------------------------------------------------------------
+// Verify null body produces only headers (no trailing body content)
+void test_null_body_no_trailing_content( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 200;
+   strcpy( resp.status_text, "OK" );
+   resp.body = NULL;
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   // Should end with Content-Length: 0\r\n\r\n
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "Content-Length: 0\r\n\r\n" ) );
+
+   // The serialized output should end right after the headers
+   char* end = strstr( str.data, "Content-Length: 0\r\n\r\n" );
+   TEST_ASSERT_NOT_NULL( end );
+   end += strlen( "Content-Length: 0\r\n\r\n" );
+   TEST_ASSERT_EQUAL( '\0', *end );
+
+   sand_string_destroy( &str );
+}
+
+//------------------------------------------------------------------------------
+// Verify response starts with HTTP/1.1
+void test_response_starts_with_http_version( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 200;
+   strcpy( resp.status_text, "OK" );
+   resp.body = NULL;
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   TEST_ASSERT_EQUAL_INT( 0, strncmp( str.data, "HTTP/1.1 ", 9 ) );
+
+   sand_string_destroy( &str );
+}
+
+//------------------------------------------------------------------------------
+// Verify 429 Too Many Requests
+void test_serialize_429_too_many_requests( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 429;
+   strcpy( resp.status_text, "Too Many Requests" );
+   resp.body = NULL;
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "HTTP/1.1 429 Too Many Requests" ) );
+
+   sand_string_destroy( &str );
+}
+
+// ===== Bug-catching tests — expose known bugs =====
+// These tests assert CORRECT behavior. They FAIL until the bugs are fixed.
+
+//------------------------------------------------------------------------------
+// BUG: http_response_serialize() ignores response.headers[] entirely.
+// Custom headers set on the response (Content-Type, Location, Set-Cookie,
+// Access-Control-Allow-Origin, etc.) are never written to the output.
+// This makes it impossible to build any real API or web app.
+// File: HttpResponse.c — only status line + Content-Length + body are serialized
+void test_bug_custom_headers_not_serialized( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 200;
+   strcpy( resp.status_text, "OK" );
+   resp.body = "{\"ok\":true}";
+   resp.header_count = 1;
+   strcpy( resp.headers[ 0 ].name, "Content-Type" );
+   SET_SV( resp.headers[ 0 ].value, "application/json" );
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   // BUG: Content-Type header is completely absent from the serialized output
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "Content-Type: application/json\r\n" ) );
+
+   sand_string_destroy( &str );
+}
+
+//------------------------------------------------------------------------------
+// BUG: Same issue — a redirect needs the Location header serialized
+void test_bug_content_type_header_not_in_output( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 301;
+   strcpy( resp.status_text, "Moved Permanently" );
+   resp.body = NULL;
+   resp.header_count = 1;
+   strcpy( resp.headers[ 0 ].name, "Location" );
+   SET_SV( resp.headers[ 0 ].value, "/new-path" );
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   // BUG: Location header is missing — redirect is useless without it
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "Location: /new-path\r\n" ) );
+
+   sand_string_destroy( &str );
+}
+
+//------------------------------------------------------------------------------
+// BUG: Multiple custom headers should all appear in output
+void test_bug_multiple_custom_headers_not_serialized( void )
+{
+   HttpResponse_t resp = { 0 };
+   resp.status_code = 200;
+   strcpy( resp.status_text, "OK" );
+   resp.body = "hello";
+   resp.header_count = 2;
+   strcpy( resp.headers[ 0 ].name, "X-Request-Id" );
+   SET_SV( resp.headers[ 0 ].value, "abc-123" );
+   strcpy( resp.headers[ 1 ].name, "Cache-Control" );
+   SET_SV( resp.headers[ 1 ].value, "no-cache" );
+
+   Sand_string_t str;
+   sand_string_create( &str );
+   http_response_serialize( &resp, &str );
+
+   // BUG: neither header appears in serialized output
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "X-Request-Id: abc-123\r\n" ) );
+   TEST_ASSERT_NOT_NULL( strstr( str.data, "Cache-Control: no-cache\r\n" ) );
+
+   sand_string_destroy( &str );
+}
+
 //------------------------------------------------------------------------------
 int main( void )
 {
@@ -542,6 +850,25 @@ int main( void )
    RUN_TEST( test_http11_500_internal_server_error );
    RUN_TEST( test_http11_501_not_implemented_response );
    RUN_TEST( test_http11_505_version_not_supported_response );
+
+   // Extended tests for small-project readiness
+   RUN_TEST( test_content_length_accuracy_short_body );
+   RUN_TEST( test_content_length_accuracy_medium_body );
+   RUN_TEST( test_serialize_html_body );
+   RUN_TEST( test_serialize_json_body );
+   RUN_TEST( test_serialize_empty_string_body );
+   RUN_TEST( test_status_line_ends_with_crlf );
+   RUN_TEST( test_serialize_403_forbidden );
+   RUN_TEST( test_serialize_503_service_unavailable );
+   RUN_TEST( test_serialize_long_body_content_length );
+   RUN_TEST( test_null_body_no_trailing_content );
+   RUN_TEST( test_response_starts_with_http_version );
+   RUN_TEST( test_serialize_429_too_many_requests );
+
+   // Bug-catching tests — these FAIL until the underlying bugs are fixed
+   RUN_TEST( test_bug_custom_headers_not_serialized );
+   RUN_TEST( test_bug_content_type_header_not_in_output );
+   RUN_TEST( test_bug_multiple_custom_headers_not_serialized );
 
    return UNITY_END();
 }
