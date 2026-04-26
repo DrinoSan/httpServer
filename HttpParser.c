@@ -53,6 +53,8 @@ bool http_parser_is_conflicting_content_length_and_transfer_encoding(
 void http_parser_resolve_conflicting_content_length_and_transfer_encoding(
     HttpRequest_t* request );
 
+bool http_parser_check_method_cl_or_transfer_encoding(
+    const HttpRequest_t* request );
 // NGINX state machine taken as guideline
 ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
                                               char* start, const char* end )
@@ -858,6 +860,11 @@ ParseResult_t http_parser_parse_request( char* buffer, int32_t header_len,
           request );
    }
 
+   if ( ! http_parser_check_method_cl_or_transfer_encoding( request ) )
+   {
+      return PARSE_ERROR_METHOD_WITHOUT_CL_OR_TRANSFER_ENCODING;
+   }
+
    return PARSE_OK;
 }
 
@@ -944,4 +951,26 @@ void http_parser_resolve_conflicting_content_length_and_transfer_encoding(
    {
       request->ignore_content_length = true;
    }
+}
+
+//------------------------------------------------------------------------------
+bool http_parser_check_method_cl_or_transfer_encoding(
+    const HttpRequest_t* request )
+{
+   if( request->method_int == SAND_HTTP_PUT || request->method_int == SAND_HTTP_POST )
+   {
+      const sand_string_view_t* cl =  http_request_find_header( request, "content-length" );
+      const sand_string_view_t* chunk =  http_request_find_header( request, "transfer-encoding" );
+      if( cl == NULL && chunk != NULL )
+      {
+         return true;
+      }
+
+      if( request->ignore_content_length == false && cl == NULL )
+      {
+         return false;
+      }
+   }
+
+   return true;
 }

@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -212,13 +213,14 @@ void* server_start_worker_event_loop( void* args )
                   continue;
                }
 
-               const char* length_value =
+               const sand_string_view_t* length_value_ptr =
                    http_request_find_header( &con->request, "content-length" );
                // If its a GET request or no content_length provided we dont
                // need to check the body
                if ( con->request.method_int == SAND_HTTP_GET &&
-                    length_value != NULL )
+                    length_value_ptr != NULL )
                {
+                  const char* length_value    = length_value_ptr->data;
                   con->request.content_length = atoi( length_value );
                   con->state                  = CONN_READING_BODY;
 
@@ -340,8 +342,17 @@ void server_handle_parsing_error( Connection_t* con, ParseResult_t result )
       break;
    }
 
+   case PARSE_ERROR_METHOD_WITHOUT_CL_OR_TRANSFER_ENCODING:
+   {
+      con->response.status_code = 411;
+      strcpy( con->response.status_text, "Length Required" );
+      break;
+   }
+
    default:
    {
+      // assert because if i forgot something i need to be reminded :)
+      assert( false && "Your forgot to handle a parsing error" );
    }
    };
 
