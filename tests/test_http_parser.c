@@ -397,7 +397,7 @@ void test_parse_head_request( void )
    ParseResult_t res = http_parser_parse_request( buf, len, &req );
 
    TEST_ASSERT_EQUAL( PARSE_OK, res );
-   TEST_ASSERT_EQUAL( SAND_HTTP_UNKNOWN, req.method_int );
+   TEST_ASSERT_EQUAL( SAND_HTTP_HEAD, req.method_int );
    assert_string_view_equal( "/index.html", req.uri_view );
 }
 

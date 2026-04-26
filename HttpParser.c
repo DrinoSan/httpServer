@@ -44,9 +44,9 @@
    *( uint32_t* ) m == ( ( c3 << 24 ) | ( c2 << 16 ) | ( c1 << 8 ) | c0 ) &&   \
        ( ( ( uint32_t* ) m )[ 1 ] & 0xffff ) == ( ( c5 << 8 ) | c4 )
 
-void          http_parser_sanitize_absolut_path( char* path );
-bool          http_parser_is_valid_version( int32_t version );
-bool          http_parser_is_valid_path( const char* path );
+void http_parser_sanitize_absolut_path( char* path );
+bool http_parser_is_valid_version( int32_t version );
+bool http_parser_is_valid_path( const char* path );
 
 bool http_parser_is_conflicting_content_length_and_transfer_encoding(
     const HttpRequest_t* request );
@@ -151,6 +151,11 @@ ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
                if ( sand_str4_cmp( method, 'P', 'O', 'S', 'T' ) )
                {
                   request->method_int = SAND_HTTP_POST;
+                  break;
+               }
+               else if ( sand_str4_cmp( method, 'H', 'E', 'A', 'D' ) )
+               {
+                  request->method_int = SAND_HTTP_HEAD;
                   break;
                }
 
@@ -652,18 +657,19 @@ ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
          {
          case ' ':
          {
-            // No path provided i need to default to / i just find some randome one
+            // No path provided i need to default to / i just find some randome
+            // one
             char* slash = request->schema_start;
-            while( *slash != '/' )
+            while ( *slash != '/' )
             {
                slash++;
             }
 
-            request->uri_start = slash;
-            request->uri_end = slash + 1;
+            request->uri_start     = slash;
+            request->uri_end       = slash + 1;
             request->uri_view.data = request->uri_start;
             request->uri_view.size = request->uri_end - request->uri_start;
-            state            = sand_http_09;
+            state                  = sand_http_09;
             break;
          }
          case CR:
@@ -733,8 +739,8 @@ ParseResult_t http_parser_parse_request( char* buffer, int32_t header_len,
                                          HttpRequest_t* request )
 {
    // -4 because i dont need the \r\n\r\n
-   const char* headers_end        = buffer + header_len - 4;
-   char*       request_line_end   = buffer;
+   const char* headers_end      = buffer + header_len - 4;
+   char*       request_line_end = buffer;
    while ( *request_line_end != CR )
    {
       request_line_end++;
@@ -754,13 +760,6 @@ ParseResult_t http_parser_parse_request( char* buffer, int32_t header_len,
    if ( !http_parser_is_valid_path( request->uri_start ) )
    {
       return PARSE_ERROR_MALFORMED_REQUEST_LINE;
-   }
-
-   if ( http_parser_is_conflicting_content_length_and_transfer_encoding(
-            request ) )
-   {
-      http_parser_resolve_conflicting_content_length_and_transfer_encoding(
-          request );
    }
 
    // Skipping the request line
@@ -819,8 +818,6 @@ ParseResult_t http_parser_parse_request( char* buffer, int32_t header_len,
       // Trimming whitespaces
       sand_string_trim_cstr( request->headers[ idx ].name, 0 );
 
-
-
       // header value handling - For the value we use a string_view into the
       // connection buffer
       int32_t value_len                  = eol - ( colon + 2 );
@@ -848,6 +845,17 @@ ParseResult_t http_parser_parse_request( char* buffer, int32_t header_len,
          // Bad Request
          return PARSE_ERROR_MISSING_HOST;
       }
+   }
+
+   // Checking if content-length and transfer-encoding is set if yes we can
+   // ignore the host otherwise we need to check it
+   http_parser_resolve_conflicting_content_length_and_transfer_encoding(
+       request );
+
+   if ( !request->ignore_content_length )
+   {
+      http_parser_is_conflicting_content_length_and_transfer_encoding(
+          request );
    }
 
    return PARSE_OK;
@@ -931,4 +939,9 @@ bool http_parser_is_conflicting_content_length_and_transfer_encoding(
 void http_parser_resolve_conflicting_content_length_and_transfer_encoding(
     HttpRequest_t* request )
 {
+   if ( http_request_find_header( request, "content-length" ) &&
+        http_request_find_header( request, "transfer-encoding" ) )
+   {
+      request->ignore_content_length = true;
+   }
 }
