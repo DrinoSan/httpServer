@@ -353,12 +353,9 @@ void server_handle_parsing_error( Connection_t* con, ParseResult_t result )
 //------------------------------------------------------------------------------
 void server_serialize_and_send_response( Connection_t* con )
 {
-   Sand_string_t buf;
-   sand_string_create( &buf );
+   http_response_serialize( &con->response, &con->buf );
 
-   http_response_serialize( &con->response, &buf );
-
-   send( con->fd, buf.data, buf.size, 0 );
-   LOG_WARN( "Sending response buffer:\n%s\n", buf.data );
-   sand_string_destroy( &buf );
+   send( con->fd, con->buf.data, con->buf.size, 0 );
+   LOG_WARN( "Sending response buffer:\n%s\n", con->buf.data );
+   sand_string_destroy( &con->buf );
 }

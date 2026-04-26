@@ -208,10 +208,9 @@ void test_http11_method_not_allowed( void )
 
    // Currently returns 404 handler — should return a 405 handler instead
    // Once implemented:
-   // Connection_t con = { 0 };
-   // found( &con );
-   // TEST_ASSERT_EQUAL( 405, con.response.status_code );
-   TEST_IGNORE_MESSAGE( "TODO: Return 405 when path matches but method doesn't" );
+   Connection_t con = { 0 };
+   found( &con );
+   TEST_ASSERT_EQUAL( 405, con.response.status_code );
    (void)found;
 }
 
@@ -261,10 +260,10 @@ void test_http11_unknown_method_501( void )
 
    // Currently returns 404 handler — should return 501 handler
    // Once implemented:
-   // Connection_t con = { 0 };
-   // found( &con );
-   // TEST_ASSERT_EQUAL( 501, con.response.status_code );
-   TEST_IGNORE_MESSAGE( "TODO: Return 501 Not Implemented for unrecognized methods" );
+   Connection_t con = { 0 };
+   found( &con );
+   TEST_ASSERT_EQUAL( 501, con.response.status_code );
+   //TEST_IGNORE_MESSAGE( "TODO: Return 501 Not Implemented for unrecognized methods" );
    (void)found;
 }
 
@@ -281,13 +280,19 @@ void test_http11_405_includes_allow_header( void )
    RouteHandler_t found = router_find_route( &router, &req );
 
    // Once implemented, the 405 handler should set an Allow header:
-   // Connection_t con = { 0 };
-   // found( &con );
-   // TEST_ASSERT_EQUAL( 405, con.response.status_code );
-   // const char* allow = /* find Allow header in response */;
-   // TEST_ASSERT_NOT_NULL( strstr( allow, "GET" ) );
-   // TEST_ASSERT_NOT_NULL( strstr( allow, "HEAD" ) );
-   TEST_IGNORE_MESSAGE( "TODO: 405 response must include Allow header (e.g. Allow: GET, HEAD)" );
+   Connection_t con = { 0 };
+   found( &con );
+   TEST_ASSERT_EQUAL( 405, con.response.status_code );
+   const char* allow = strstr( con.buf.data, "Allow" );
+   if( allow == NULL )
+   {
+      TEST_ASSERT_EQUAL( true, false );
+      return;
+   }
+
+   TEST_ASSERT_NOT_NULL( strstr( allow, "GET" ) );
+   TEST_ASSERT_NOT_NULL( strstr( allow, "HEAD" ) );
+   //TEST_IGNORE_MESSAGE( "TODO: 405 response must include Allow header (e.g. Allow: GET, HEAD)" );
    (void)found;
 }
 

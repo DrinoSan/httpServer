@@ -29,6 +29,7 @@ typedef struct
    HttpRequest_t     request;
    HttpResponse_t    response;
    ConnectionState_t state;
+   Sand_string_t     buf;
 } Connection_t;
 
 Connection_t* connection_create_heap( int32_t fd );
