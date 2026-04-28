@@ -35,8 +35,8 @@ tests/test_router: tests/test_router.c Router.c Log.c HttpRequest.c $(UNITY_SRC)
 tests/test_http_request: tests/test_http_request.c HttpRequest.c HttpRequest.c $(UNITY_SRC) $(SANDLIB)
 	$(CC) $(TEST_CFLAGS) -o $@ tests/test_http_request.c HttpRequest.c $(UNITY_SRC) -Lsandlib -lsand
 
-tests/test_http_response: tests/test_http_response.c HttpResponse.c HttpRequest.c $(UNITY_SRC) $(SANDLIB)
-	$(CC) $(TEST_CFLAGS) -o $@ tests/test_http_response.c HttpResponse.c HttpRequest.c $(UNITY_SRC) -Lsandlib -lsand
+tests/test_http_response: tests/test_http_response.c HttpResponse.c HttpRequest.c Log.c $(UNITY_SRC) $(SANDLIB)
+	$(CC) $(TEST_CFLAGS) -o $@ tests/test_http_response.c HttpResponse.c HttpRequest.c Log.c $(UNITY_SRC) -Lsandlib -lsand
 
 test: $(SANDLIB) tests/test_http_parser tests/test_router tests/test_http_request tests/test_http_response
 	@echo "=== Running test_http_parser ==="

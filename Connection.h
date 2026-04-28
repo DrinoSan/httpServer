@@ -38,7 +38,7 @@ typedef enum
 //   ├── HttpResponse_t     inline
 //   │   └── body                        ──> external pointer (typically string literal, NOT owned)
 //   │   └── headers[].name              ──> copied by caller (owns the data)
-//   │   └── headers[].value             ──> string view, caller must ensure lifetime
+//   │   └── headers[].value             ──> sand_string, owns the data
 //   └── buf (Sand_string_t)             ──> heap data via sand_string_create()
 //                                           freed by connection_destroy()
 //
