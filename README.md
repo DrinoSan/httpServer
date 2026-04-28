@@ -245,7 +245,7 @@ See [`architecture.md`](architecture.md) for the full architecture analysis and 
 - Server.c decomposition into smaller modules
 - Parser, router, and response serialization improvements
 - Threading model and thread safety assessment
-- Sandlib extensions needed (`sand_string_append_view`, `sand_string_view_to_int`, etc.)
+- Sandlib extensions needed (`sand_string_append_n`, `sand_string_view_to_int`, etc.)
 - 5-phase implementation roadmap (bug fixes -> robustness -> keep-alive -> refactoring -> extended features)
 
 **Top 3 priorities** (from architecture.md):
