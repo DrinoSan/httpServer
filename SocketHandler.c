@@ -8,8 +8,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "SocketHandler.h"
 #include "Log.h"
+#include "SocketHandler.h"
 
 //------------------------------------------------------------------------------
 void socketHandler_create( SocketHandler_t* socketHandler, int domain, int type,
@@ -18,13 +18,13 @@ void socketHandler_create( SocketHandler_t* socketHandler, int domain, int type,
    socketHandler->socketFD = socket( domain, type, protocol );
    assert( socketHandler->socketFD != -1 );
 
-   LOG_INFO("Server required socketFD <%d>", socketHandler->socketFD );
+   LOG_INFO( "Server required socketFD <%d>", socketHandler->socketFD );
 }
 
 //------------------------------------------------------------------------------
 void socketHandler_destroy( SocketHandler_t* socketHandler )
 {
-   LOG_INFO("Destroying SocketHandler" );
+   LOG_INFO( "Destroying SocketHandler" );
    socketHandler_closeSocket( socketHandler );
 }
 
@@ -46,8 +46,9 @@ void socketHandler_init( SocketHandler_t* socketHandler, const char* address,
    // Bind the socket.
    struct sockaddr_in addr;
    memset( &addr, 0, sizeof( addr ) );
-   addr.sin_family = AF_INET; // IPv4
-   addr.sin_port   = htons( port ); // Need to convert port to network byte order
+   addr.sin_family = AF_INET;   // IPv4
+   addr.sin_port =
+       htons( port );   // Need to convert port to network byte order
 
    if ( strlen( address ) == 0 )
    {
@@ -57,7 +58,7 @@ void socketHandler_init( SocketHandler_t* socketHandler, const char* address,
    else
    {
       // If a address is provided to use we set it up here
-      if( inet_pton( AF_INET, address, &( addr.sin_addr ) ) != 1 )
+      if ( inet_pton( AF_INET, address, &( addr.sin_addr ) ) != 1 )
       {
          perror( "Address is invalid" );
          assert( false );
@@ -78,7 +79,7 @@ void socketHandler_init( SocketHandler_t* socketHandler, const char* address,
       assert( false );
    }
 
-   LOG_INFO("Socket bound and listening on port <%d>", port );
+   LOG_INFO( "Socket bound and listening on port <%d>", port );
 }
 
 //------------------------------------------------------------------------------

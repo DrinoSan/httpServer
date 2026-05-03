@@ -69,7 +69,8 @@ void router_add_route( Router_t* router, int32_t method, const char* path,
 //------------------------------------------------------------------------------
 RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request )
 {
-   if ( request->method_int & ~SAND_HTTP_ALL_METHODS || request->method_int == SAND_HTTP_UNKNOWN )
+   if ( request->method_int & ~SAND_HTTP_ALL_METHODS ||
+        request->method_int == SAND_HTTP_UNKNOWN )
    {
       LOG_WARN( "Unknown Method, will not create route" );
       return handle_501_unsupported_method;
@@ -78,9 +79,9 @@ RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request )
    for ( int32_t i = 0; i < router->count_routes; i++ )
    {
       Route_t* route = &router->routes[ i ];
-      //LOG_WARN( "request->uri_view: %.*s route path: %s",
-      //          ( int ) request->uri_view.size, request->uri_view.data,
-      //          route->path );
+      // LOG_WARN( "request->uri_view: %.*s route path: %s",
+      //           ( int ) request->uri_view.size, request->uri_view.data,
+      //           route->path );
 
       // We can skip if the size already is off
       if ( request->uri_view.size != strlen( route->path ) )
@@ -96,25 +97,26 @@ RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request )
       }
    }
 
-   // We found no exact match need to check if the path matches but the method not
+   // We found no exact match need to check if the path matches but the method
+   // not
    for ( int32_t i = 0; i < router->count_routes; i++ )
    {
       Route_t* route = &router->routes[ i ];
-      //LOG_WARN( "request->uri_view: %.*s route path: %s",
-      //          ( int ) request->uri_view.size, request->uri_view.data,
-      //          route->path );
+      // LOG_WARN( "request->uri_view: %.*s route path: %s",
+      //           ( int ) request->uri_view.size, request->uri_view.data,
+      //           route->path );
 
       if ( request->uri_view.size != strlen( route->path ) )
       {
          continue;
       }
 
-      if( memcmp( route->path, request->uri_view.data, request->uri_view.size ) == 0 )
+      if ( memcmp( route->path, request->uri_view.data,
+                   request->uri_view.size ) == 0 )
       {
          return handle_405_method_path_no_match;
       }
    }
-
 
    return handle_404_not_found;
 }

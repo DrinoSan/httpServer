@@ -1,13 +1,13 @@
 #include <stdio.h>
 
-#include "Server.h"
 #include "Connection.h"
 #include "Router.h"
+#include "Server.h"
 
 void handle_index( Connection_t* con )
 {
    con->response.status_code = 200;
-   con->response.body = "<h1>Hello</h1>";
+   con->response.body        = "<h1>Hello</h1>";
 }
 
 int main()

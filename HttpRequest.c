@@ -1,14 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 
-
 #include "HttpRequest.h"
 
-const sand_string_view_t* http_request_find_header(const HttpRequest_t* request, const char* name)
+const sand_string_view_t*
+http_request_find_header( const HttpRequest_t* request, const char* name )
 {
-   for( int32_t i = 0; i < request->header_count; i++ )
+   for ( int32_t i = 0; i < request->header_count; i++ )
    {
-      if( strcmp( request->headers[ i ].name, name ) == 0 )
+      if ( strcmp( request->headers[ i ].name, name ) == 0 )
       {
          return &request->headers[ i ].value;
       }
@@ -31,17 +31,18 @@ void http_request_showMe( const HttpRequest_t* request )
    printf( "complex_uri:    %d\n", request->complex_uri );
    printf( "content_length: %d\n", request->content_length );
    printf( "body:           %s\n", request->body ? request->body : "(null)" );
-   printf( "request_start:  %p\n", (void*)request->request_start );
-   printf( "request_end:    %p\n", (void*)request->request_end );
-   printf( "schema_start:   %p\n", (void*)request->schema_start );
-   printf( "schema_end:     %p\n", (void*)request->schema_end );
-   printf( "method_end:     %p\n", (void*)request->method_end );
-   printf( "uri_start:      %p\n", (void*)request->uri_start );
-   printf( "uri_end:        %p\n", (void*)request->uri_end );
+   printf( "request_start:  %p\n", ( void* ) request->request_start );
+   printf( "request_end:    %p\n", ( void* ) request->request_end );
+   printf( "schema_start:   %p\n", ( void* ) request->schema_start );
+   printf( "schema_end:     %p\n", ( void* ) request->schema_end );
+   printf( "method_end:     %p\n", ( void* ) request->method_end );
+   printf( "uri_start:      %p\n", ( void* ) request->uri_start );
+   printf( "uri_end:        %p\n", ( void* ) request->uri_end );
    printf( "header_count:   %d\n", request->header_count );
-   for( int32_t i = 0; i < request->header_count; i++ )
+   for ( int32_t i = 0; i < request->header_count; i++ )
    {
-      printf( "  [%d] %s: %s\n", i, request->headers[ i ].name, request->headers[ i ].value );
+      printf( "  [%d] %s: %s\n", i, request->headers[ i ].name,
+              request->headers[ i ].value );
    }
    printf( "===================\n" );
 }

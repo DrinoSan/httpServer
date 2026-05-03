@@ -35,7 +35,7 @@
 #define sand_str4_cmp( m, c0, c1, c2, c3 )                                     \
    *( uint32_t* ) m == ( ( c3 << 24 ) | ( c2 << 16 ) | ( c1 << 8 ) | c0 )
 
-#define sand_str5_cmp( m, c0, c1, c2, c3, c4 )                                     \
+#define sand_str5_cmp( m, c0, c1, c2, c3, c4 )                                 \
    *( uint32_t* ) m == ( ( c3 << 24 ) | ( c2 << 16 ) | ( c1 << 8 ) | c0 ) &&   \
        ( ( ( uint32_t* ) m )[ 1 ] & 0xff ) == ( c4 )
 // clang-format off
@@ -170,7 +170,7 @@ ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
 
             case 5:
             {
-               if( sand_str5_cmp( method, 'P', 'A', 'T', 'C', 'H' ) )
+               if ( sand_str5_cmp( method, 'P', 'A', 'T', 'C', 'H' ) )
                {
                   request->method_int = SAND_HTTP_PATCH;
                   break;
@@ -875,7 +875,7 @@ ParseResult_t http_parser_parse_request( char* buffer, int32_t header_len,
           request );
    }
 
-   if ( ! http_parser_check_method_cl_or_transfer_encoding( request ) )
+   if ( !http_parser_check_method_cl_or_transfer_encoding( request ) )
    {
       return PARSE_ERROR_METHOD_WITHOUT_CL_OR_TRANSFER_ENCODING;
    }
@@ -972,16 +972,19 @@ void http_parser_resolve_conflicting_content_length_and_transfer_encoding(
 bool http_parser_check_method_cl_or_transfer_encoding(
     const HttpRequest_t* request )
 {
-   if( request->method_int == SAND_HTTP_PUT || request->method_int == SAND_HTTP_POST )
+   if ( request->method_int == SAND_HTTP_PUT ||
+        request->method_int == SAND_HTTP_POST )
    {
-      const sand_string_view_t* cl =  http_request_find_header( request, "content-length" );
-      const sand_string_view_t* chunk =  http_request_find_header( request, "transfer-encoding" );
-      if( cl == NULL && chunk != NULL )
+      const sand_string_view_t* cl =
+          http_request_find_header( request, "content-length" );
+      const sand_string_view_t* chunk =
+          http_request_find_header( request, "transfer-encoding" );
+      if ( cl == NULL && chunk != NULL )
       {
          return true;
       }
 
-      if( request->ignore_content_length == false && cl == NULL )
+      if ( request->ignore_content_length == false && cl == NULL )
       {
          return false;
       }

@@ -272,7 +272,7 @@ void* server_start_worker_event_loop( void* args )
             // If no route was registered the router returns
             // handle_404_not_found
             handler( con );
-            if( con->response.status_code == 0 )
+            if ( con->response.status_code == 0 )
             {
                con->response.status_code = 200;
             }
