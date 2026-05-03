@@ -35,7 +35,11 @@
 #define sand_str4_cmp( m, c0, c1, c2, c3 )                                     \
    *( uint32_t* ) m == ( ( c3 << 24 ) | ( c2 << 16 ) | ( c1 << 8 ) | c0 )
 
+#define sand_str5_cmp( m, c0, c1, c2, c3, c4 )                                     \
+   *( uint32_t* ) m == ( ( c3 << 24 ) | ( c2 << 16 ) | ( c1 << 8 ) | c0 ) &&   \
+       ( ( ( uint32_t* ) m )[ 1 ] & 0xff ) == ( c4 )
 // clang-format off
+// DELETE method as example
 // First we cast it to a ( uin32_t* )m
 // Second the [1] — index 1 means "we start at the second uint32_t", which // starts at byte 4
 // Third we 0xffff the 2 most significant bytes which is garbage in little endian our 'T' 'E' is in the least significant bytes
@@ -158,6 +162,17 @@ ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
                else if ( sand_str4_cmp( method, 'H', 'E', 'A', 'D' ) )
                {
                   request->method_int = SAND_HTTP_HEAD;
+                  break;
+               }
+
+               break;
+            }
+
+            case 5:
+            {
+               if( sand_str5_cmp( method, 'P', 'A', 'T', 'C', 'H' ) )
+               {
+                  request->method_int = SAND_HTTP_PATCH;
                   break;
                }
 
