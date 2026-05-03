@@ -123,7 +123,6 @@ RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request )
 void handle_404_not_found( Connection_t* con )
 {
    con->response.status_code = 404;
-   strcpy( con->response.status_text, "Not Found" );
    con->response.body =
        "<h1>Sorry, the page you are asking for is not registered</h1>";
 }
@@ -132,18 +131,16 @@ void handle_404_not_found( Connection_t* con )
 void handle_405_method_path_no_match( Connection_t* con )
 {
    con->response.status_code = 405;
-   strcpy( con->response.status_text, "Method Not Allowed" );
    con->response.body =
        "<h1>Sorry, the path you requested does not match with any method</h1>";
 
-   sand_string_append( &con->buf, "Allow: GET, POST, HEAD" );
+   sand_string_append( &con->buf, "Allow: GET, POST, HEAD, PATCH, DELETE" );
 }
 
 //------------------------------------------------------------------------------
 void handle_501_unsupported_method( Connection_t* con )
 {
    con->response.status_code = 501;
-   strcpy( con->response.status_text, "Unsuported Method" );
    con->response.body =
        "<h1>Sorry, the method you requested is not supported</h1>";
 }

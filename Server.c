@@ -272,6 +272,11 @@ void* server_start_worker_event_loop( void* args )
             // If no route was registered the router returns
             // handle_404_not_found
             handler( con );
+            if( con->response.status_code == 0 )
+            {
+               con->response.status_code = 200;
+            }
+
             server_serialize_and_send_response( con );
             connection_destroy( con );
             continue;
@@ -310,42 +315,36 @@ void server_handle_parsing_error( Connection_t* con, ParseResult_t result )
    case PARSE_ERROR_MALFORMED_REQUEST_LINE:
    {
       con->response.status_code = 400;
-      strcpy( con->response.status_text, "Bad Request" );
       break;
    }
 
    case PARSE_ERROR_INVALID_HEADERS:
    {
       con->response.status_code = 431;
-      strcpy( con->response.status_text, "Request Header" );
       break;
    }
 
    case PARSE_ERROR_PATH_TOO_LONG:
    {
       con->response.status_code = 431;
-      strcpy( con->response.status_text, "Request Header" );
       break;
    }
 
    case PARSE_ERROR_TOO_MANY_HEADERS:
    {
       con->response.status_code = 431;
-      strcpy( con->response.status_text, "Request Header" );
       break;
    }
 
    case PARSE_ERROR_MISSING_HOST:
    {
       con->response.status_code = 400;
-      strcpy( con->response.status_text, "Bad Request" );
       break;
    }
 
    case PARSE_ERROR_METHOD_WITHOUT_CL_OR_TRANSFER_ENCODING:
    {
       con->response.status_code = 411;
-      strcpy( con->response.status_text, "Length Required" );
       break;
    }
 

@@ -368,7 +368,7 @@ void test_keepalive_response_echoes_connection_close( void )
    // Connection: close so the client knows
    Connection_t con = { 0 };
    con.response.status_code = 200;
-   strcpy( con.response.status_text, "OK" );
+
    con.response.body = "bye";
 
    // Once implemented, the serializer should include Connection: close:

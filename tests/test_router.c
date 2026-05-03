@@ -1,8 +1,10 @@
 #include <string.h>
+#include <stdio.h>
 
 #include "unity.h"
 
 #include "../Router.h"
+#include "../HttpResponse.h"
 
 // Dummy handlers for testing
 static void handler_home( Connection_t* con )    { (void)con; }
@@ -176,7 +178,7 @@ void test_http11_404_handler_sets_response( void )
    Connection_t con = { 0 };
    handler( &con );
    TEST_ASSERT_EQUAL( 404, con.response.status_code );
-   TEST_ASSERT_EQUAL_STRING( "Not Found", con.response.status_text );
+   TEST_ASSERT_EQUAL_STRING( "Not Found", http_status_text( con.response.status_code ) );
 }
 
 //------------------------------------------------------------------------------
@@ -200,16 +202,21 @@ void test_http11_path_with_query_string( void )
 // (RFC 7231 section 6.5.5)
 void test_http11_method_not_allowed( void )
 {
+   printf("ENTERING\n");
    // Register GET /resource but request POST /resource
    router_add_route( &router, SAND_HTTP_GET, "/resource", handler_home );
+   // Register GET /resource but request POST /resource
 
    HttpRequest_t  req   = make_request( SAND_HTTP_POST, "/resource" );
    RouteHandler_t found = router_find_route( &router, &req );
 
    // Currently returns 404 handler — should return a 405 handler instead
    // Once implemented:
+   printf("qihjdiqowhdiq\n");
    Connection_t con = { 0 };
+   sand_string_create( &con.buf );
    found( &con );
+   printf("HERE\n");
    TEST_ASSERT_EQUAL( 405, con.response.status_code );
    (void)found;
 }
@@ -488,7 +495,7 @@ void test_404_handler_has_body( void )
    handler( &con );
    TEST_ASSERT_EQUAL( 404, con.response.status_code );
    TEST_ASSERT_NOT_NULL( con.response.body );
-   TEST_ASSERT_EQUAL_STRING( "Not Found", con.response.status_text );
+   TEST_ASSERT_EQUAL_STRING( "Not Found", http_status_text( con.response.status_code ) );
 }
 
 //------------------------------------------------------------------------------
@@ -511,9 +518,9 @@ void test_route_count_increments( void )
 // These tests assert CORRECT behavior. They FAIL until the bugs are fixed.
 
 //------------------------------------------------------------------------------
-// BUG: handle_501_unsupported_method sets status_text to "Unsuported Method"
-// (missing 'p' in "Unsupported"). Should be "Not Implemented" per RFC 7231.
-// File: Router.c line 146
+// BUG (FIXED): handle_501_unsupported_method previously set status_text to
+// "Unsuported Method" (typo + wrong text). Now status text is derived from
+// http_status_text() which returns the correct "Not Implemented" per RFC 7231.
 void test_bug_501_status_text_typo( void )
 {
    HttpRequest_t  req   = make_request( SAND_HTTP_UNKNOWN, "/" );
@@ -522,9 +529,8 @@ void test_bug_501_status_text_typo( void )
    Connection_t con = { 0 };
    found( &con );
    TEST_ASSERT_EQUAL( 501, con.response.status_code );
-   // BUG: currently "Unsuported Method" (typo + wrong text)
-   // RFC 7231 section 6.6.2 says status text should be "Not Implemented"
-   TEST_ASSERT_EQUAL_STRING( "Not Implemented", con.response.status_text );
+   // Verified via centralized http_status_text() lookup
+   TEST_ASSERT_EQUAL_STRING( "Not Implemented", http_status_text( con.response.status_code ) );
 }
 
 //------------------------------------------------------------------------------

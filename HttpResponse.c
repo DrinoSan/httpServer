@@ -3,10 +3,39 @@
 
 #include "HttpResponse.h"
 #include "Log.h"
+#include "atom.h"
 
 //------------------------------------------------------------------------------
 void http_response_serialize_status_line( HttpResponse_t* response,
                                           Sand_string_t*  string );
+
+//------------------------------------------------------------------------------
+const char* http_status_text( int status_code )
+{
+   switch ( status_code )
+   {
+   case 100: return sand_atom_string( "Continue" );
+   case 200: return sand_atom_string( "OK" );
+   case 201: return sand_atom_string( "Created" );
+   case 204: return sand_atom_string( "No Content" );
+   case 301: return sand_atom_string( "Moved Permanently" );
+   case 302: return sand_atom_string( "Found" );
+   case 400: return sand_atom_string( "Bad Request" );
+   case 403: return sand_atom_string( "Forbidden" );
+   case 404: return sand_atom_string( "Not Found" );
+   case 405: return sand_atom_string( "Method Not Allowed" );
+   case 411: return sand_atom_string( "Length Required" );
+   case 413: return sand_atom_string( "Payload Too Large" );
+   case 414: return sand_atom_string( "URI Too Long" );
+   case 429: return sand_atom_string( "Too Many Requests" );
+   case 431: return sand_atom_string( "Request Header Fields Too Large" );
+   case 500: return sand_atom_string( "Internal Server Error" );
+   case 501: return sand_atom_string( "Not Implemented" );
+   case 503: return sand_atom_string( "Service Unavailable" );
+   case 505: return sand_atom_string( "HTTP Version Not Supported" );
+   default:  return sand_atom_string( "Unknown" );
+   }
+}
 
 //------------------------------------------------------------------------------
 void http_response_set_header( HttpResponse_t* response, const char* name,
@@ -79,6 +108,6 @@ void http_response_serialize_status_line( HttpResponse_t* response,
              response->status_code );
    sand_string_append( string, status_code_str );
    sand_string_append( string, " " );
-   sand_string_append( string, response->status_text );
+   sand_string_append( string, http_status_text( response->status_code ) );
    sand_string_append( string, " \r\n" );
 }

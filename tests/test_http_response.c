@@ -17,7 +17,7 @@ void test_serialize_200_with_body( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "Hello";
 
    Sand_string_t str;
@@ -37,7 +37,7 @@ void test_serialize_404_with_body( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 404;
-   strcpy( resp.status_text, "Not Found" );
+
    resp.body = "<h1>Not Found</h1>";
 
    Sand_string_t str;
@@ -55,7 +55,7 @@ void test_serialize_null_body( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 204;
-   strcpy( resp.status_text, "No Content" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -72,7 +72,7 @@ void test_status_line_format( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -93,7 +93,7 @@ void test_http11_response_includes_date_header( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "hello";
 
    Sand_string_t str;
@@ -114,7 +114,7 @@ void test_http11_response_includes_server_header( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "hello";
 
    Sand_string_t str;
@@ -134,7 +134,7 @@ void test_http11_response_includes_content_type( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "<h1>Hello</h1>";
 
    Sand_string_t str;
@@ -154,7 +154,7 @@ void test_http11_head_response_no_body( void )
    // HEAD response: same headers as GET, but no body in output
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "<h1>Hello</h1>";   // body exists for Content-Length calculation
 
    // Once a head-aware serialize is implemented:
@@ -174,7 +174,7 @@ void test_http11_response_connection_close( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "bye";
    // Set a Connection: close header on the response
    resp.header_count = 1;
@@ -198,7 +198,7 @@ void test_http11_serialize_custom_headers( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "test";
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "X-Custom" );
@@ -223,7 +223,7 @@ void test_http11_chunked_response( void )
    // <size-hex>\r\n<data>\r\n ... 0\r\n\r\n
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "Hello, World!";
 
    // Once implemented, a chunked serializer would produce:
@@ -248,7 +248,7 @@ void test_http11_100_continue_response( void )
    // 100 Continue is a simple interim response: "HTTP/1.1 100 Continue\r\n\r\n"
    HttpResponse_t resp = { 0 };
    resp.status_code = 100;
-   strcpy( resp.status_text, "Continue" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -270,7 +270,7 @@ void test_http11_201_created_response( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 201;
-   strcpy( resp.status_text, "Created" );
+
    resp.body = NULL;
    // Location header pointing to the new resource
    resp.header_count = 1;
@@ -295,7 +295,7 @@ void test_http11_204_no_content_no_body( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 204;
-   strcpy( resp.status_text, "No Content" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -318,7 +318,7 @@ void test_http11_301_redirect( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 301;
-   strcpy( resp.status_text, "Moved Permanently" );
+
    resp.body = NULL;
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Location" );
@@ -342,7 +342,7 @@ void test_http11_302_redirect( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 302;
-   strcpy( resp.status_text, "Found" );
+
    resp.body = NULL;
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Location" );
@@ -366,7 +366,7 @@ void test_http11_400_bad_request( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 400;
-   strcpy( resp.status_text, "Bad Request" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -384,7 +384,7 @@ void test_http11_405_method_not_allowed_response( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 405;
-   strcpy( resp.status_text, "Method Not Allowed" );
+
    resp.body = NULL;
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Allow" );
@@ -408,7 +408,7 @@ void test_http11_411_length_required_response( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 411;
-   strcpy( resp.status_text, "Length Required" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -426,7 +426,7 @@ void test_http11_413_payload_too_large_response( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 413;
-   strcpy( resp.status_text, "Payload Too Large" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -444,7 +444,7 @@ void test_http11_414_uri_too_long_response( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 414;
-   strcpy( resp.status_text, "URI Too Long" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -462,7 +462,7 @@ void test_http11_500_internal_server_error( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 500;
-   strcpy( resp.status_text, "Internal Server Error" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -480,7 +480,7 @@ void test_http11_501_not_implemented_response( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 501;
-   strcpy( resp.status_text, "Not Implemented" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -498,7 +498,7 @@ void test_http11_505_version_not_supported_response( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 505;
-   strcpy( resp.status_text, "HTTP Version Not Supported" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -518,7 +518,7 @@ void test_content_length_accuracy_short_body( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "A";   // 1 char + 1 for "\n" = 2
 
    Sand_string_t str;
@@ -535,7 +535,7 @@ void test_content_length_accuracy_medium_body( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "Hello, World!";   // 13 chars + 1 = 14
 
    Sand_string_t str;
@@ -553,7 +553,7 @@ void test_serialize_html_body( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "<html><body><h1>Welcome</h1><p>Hello!</p></body></html>";
 
    Sand_string_t str;
@@ -572,7 +572,7 @@ void test_serialize_json_body( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "{\"status\":\"ok\",\"count\":42}";
 
    Sand_string_t str;
@@ -591,7 +591,7 @@ void test_serialize_empty_string_body( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "";   // empty but not NULL — strlen = 0, +1 = 1
 
    Sand_string_t str;
@@ -609,7 +609,7 @@ void test_status_line_ends_with_crlf( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -628,7 +628,7 @@ void test_serialize_403_forbidden( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 403;
-   strcpy( resp.status_text, "Forbidden" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -646,7 +646,7 @@ void test_serialize_503_service_unavailable( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 503;
-   strcpy( resp.status_text, "Service Unavailable" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -664,7 +664,7 @@ void test_serialize_long_body_content_length( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
 
    // Build a body of exactly 100 chars
    char body[ 101 ];
@@ -687,7 +687,7 @@ void test_null_body_no_trailing_content( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -712,7 +712,7 @@ void test_response_starts_with_http_version( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -730,7 +730,7 @@ void test_serialize_429_too_many_requests( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 429;
-   strcpy( resp.status_text, "Too Many Requests" );
+
    resp.body = NULL;
 
    Sand_string_t str;
@@ -755,7 +755,7 @@ void test_bug_custom_headers_not_serialized( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "{\"ok\":true}";
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Content-Type" );
@@ -777,7 +777,7 @@ void test_bug_content_type_header_not_in_output( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 301;
-   strcpy( resp.status_text, "Moved Permanently" );
+
    resp.body = NULL;
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Location" );
@@ -799,7 +799,7 @@ void test_bug_multiple_custom_headers_not_serialized( void )
 {
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
-   strcpy( resp.status_text, "OK" );
+
    resp.body = "hello";
    resp.header_count = 2;
    strcpy( resp.headers[ 0 ].name, "X-Request-Id" );
@@ -816,6 +816,33 @@ void test_bug_multiple_custom_headers_not_serialized( void )
    TEST_ASSERT_NOT_NULL( strstr( str.data, "Cache-Control: no-cache\r\n" ) );
 
    sand_string_destroy( &str );
+}
+
+// ===== http_status_text() tests =====
+
+//------------------------------------------------------------------------------
+void test_http_status_text_known_codes( void )
+{
+   TEST_ASSERT_EQUAL_STRING( "OK", http_status_text( 200 ) );
+   TEST_ASSERT_EQUAL_STRING( "Not Found", http_status_text( 404 ) );
+   TEST_ASSERT_EQUAL_STRING( "Internal Server Error", http_status_text( 500 ) );
+   TEST_ASSERT_EQUAL_STRING( "Not Implemented", http_status_text( 501 ) );
+   TEST_ASSERT_EQUAL_STRING( "Request Header Fields Too Large", http_status_text( 431 ) );
+}
+
+//------------------------------------------------------------------------------
+void test_http_status_text_unknown_code( void )
+{
+   TEST_ASSERT_EQUAL_STRING( "Unknown", http_status_text( 999 ) );
+}
+
+//------------------------------------------------------------------------------
+void test_http_status_text_returns_same_pointer( void )
+{
+   // Atom interning means the same code returns the same pointer
+   const char* a = http_status_text( 200 );
+   const char* b = http_status_text( 200 );
+   TEST_ASSERT_EQUAL_PTR( a, b );
 }
 
 //------------------------------------------------------------------------------
@@ -869,6 +896,11 @@ int main( void )
    RUN_TEST( test_bug_custom_headers_not_serialized );
    RUN_TEST( test_bug_content_type_header_not_in_output );
    RUN_TEST( test_bug_multiple_custom_headers_not_serialized );
+
+   // http_status_text() tests
+   RUN_TEST( test_http_status_text_known_codes );
+   RUN_TEST( test_http_status_text_unknown_code );
+   RUN_TEST( test_http_status_text_returns_same_pointer );
 
    return UNITY_END();
 }
