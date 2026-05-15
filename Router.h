@@ -4,6 +4,12 @@
 
 #define MAX_ROUTES 32
 
+typedef struct
+{
+   void ( *fn )( void* ctx );
+   void* ctx;
+} CallBack_t;
+
 typedef void ( *RouteHandler_t )( Connection_t* con );
 
 typedef struct
@@ -20,5 +26,6 @@ typedef struct
    int32_t count_routes;
 } Router_t;
 
-void router_add_route( Router_t* router, int32_t method, const char* path, RouteHandler_t handler );
-RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request );
+void router_add_route( Router_t* router, int32_t method, const char* path,
+                       RouteHandler_t handler );
+RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request, Connection_t* con );

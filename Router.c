@@ -67,7 +67,7 @@ void router_add_route( Router_t* router, int32_t method, const char* path,
 }
 
 //------------------------------------------------------------------------------
-RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request )
+RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request, Connection_t* con )
 {
    if ( request->method_int & ~SAND_HTTP_ALL_METHODS ||
         request->method_int == SAND_HTTP_UNKNOWN )
@@ -94,6 +94,12 @@ RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request )
                    request->uri_view.size ) == 0 )
       {
          return route->handler;
+      }
+
+      if( memcmp( route->path, request->uri_view.data, request->uri_view.size ) == 0 )
+      {
+         // Path matches but method not remember method to later correctly assemble 405 info
+         con->methods_for_405_error | route->method_int;
       }
    }
 
@@ -135,6 +141,17 @@ void handle_405_method_path_no_match( Connection_t* con )
    con->response.status_code = 405;
    con->response.body =
        "<h1>Sorry, the path you requested does not match with any method</h1>";
+
+   unsigned int bits = con->methods_for_405_error & SAND_HTTP_ALL_METHODS;
+   while( bits )
+   {
+      unsigned int method = bits & (-bits);
+
+
+      bits &= bits - 1;
+   }
+
+
 
    sand_string_append( &con->buf, "Allow: GET, POST, HEAD, PATCH, DELETE" );
 }

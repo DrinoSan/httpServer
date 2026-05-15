@@ -3,6 +3,34 @@
 
 #include "HttpRequest.h"
 
+// clang-format off
+const char *sand_http_method_to_string(uint32_t method)
+{
+    switch (method)
+    {
+        case SAND_HTTP_UNKNOWN:     return "UNKNOWN";
+        case SAND_HTTP_GET:         return "GET";
+        case SAND_HTTP_HEAD:        return "HEAD";
+        case SAND_HTTP_POST:        return "POST";
+        case SAND_HTTP_PUT:         return "PUT";
+        case SAND_HTTP_DELETE:      return "DELETE";
+        case SAND_HTTP_MKCOL:       return "MKCOL";
+        case SAND_HTTP_COPY:        return "COPY";
+        case SAND_HTTP_MOVE:        return "MOVE";
+        case SAND_HTTP_OPTIONS:     return "OPTIONS";
+        case SAND_HTTP_PROPFIND:    return "PROPFIND";
+        case SAND_HTTP_PROPPATCH:   return "PROPPATCH";
+        case SAND_HTTP_LOCK:        return "LOCK";
+        case SAND_HTTP_UNLOCK:      return "UNLOCK";
+        case SAND_HTTP_PATCH:       return "PATCH";
+        case SAND_HTTP_TRACE:       return "TRACE";
+        case SAND_HTTP_CONNECT:     return "CONNECT";
+        case SAND_HTTP_ALL_METHODS: return "ALL";
+        default:                    return "INVALID";
+    }
+}
+// clang-format on
+
 const sand_string_view_t*
 http_request_find_header( const HttpRequest_t* request, const char* name )
 {

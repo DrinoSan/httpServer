@@ -32,6 +32,8 @@
 // By Doubeling we shift the one bit to the left (Division would shift right) Then if we subtract one if fills all the bits after with one
 // clang-format on
 
+const char *sand_http_method_to_string(uint32_t method);
+
 typedef struct
 {
    char         method[ 8 ];   // GET, POST, PUT, DELETE
