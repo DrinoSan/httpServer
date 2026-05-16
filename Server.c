@@ -267,7 +267,7 @@ void* server_start_worker_event_loop( void* args )
          if ( con->state == CONN_SENDING_RESPONSE )
          {
             RouteHandler_t handler =
-                router_find_route( &server->router, &con->request );
+                router_find_route( &server->router, &con->request, con );
 
             // If no route was registered the router returns
             // handle_404_not_found

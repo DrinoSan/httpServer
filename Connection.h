@@ -59,6 +59,7 @@ typedef struct
    HttpResponse_t    response;
    ConnectionState_t state;
    Sand_string_t     buf;
+   Sand_string_t     buf_for_error_405;
    int               methods_for_405_error;
 } Connection_t;
 

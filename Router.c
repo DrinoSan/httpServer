@@ -123,14 +123,12 @@ void handle_405_method_path_no_match( Connection_t* con )
    con->response.body =
        "<h1>Sorry, the path you requested does not match with any method</h1>";
 
-   sand_string_append( &con->buf, "Allow: " );
-
    unsigned int bits = con->methods_for_405_error & SAND_HTTP_ALL_METHODS;
    while( bits )
    {
       unsigned int method = bits & (-bits);
 
-      sand_string_append( &con->buf, sand_http_method_to_string( method ) );
+      sand_string_append( &con->buf_for_error_405, sand_http_method_to_string( method ) );
 
       bits &= bits - 1;
 
@@ -139,8 +137,10 @@ void handle_405_method_path_no_match( Connection_t* con )
          break;
       }
 
-      sand_string_append( &con->buf, ", " );
+      sand_string_append( &con->buf_for_error_405, ", " );
    }
+
+   http_response_set_header( &con->response, "Allow", con->buf_for_error_405.data );
 }
 
 //------------------------------------------------------------------------------

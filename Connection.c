@@ -15,6 +15,8 @@ Connection_t* connection_create_heap( int32_t fd )
    sand_string_create( &con->buf );
    memset( &con->response, 0, MAX_HEADERS );
 
+   sand_string_create( &con->buf_for_error_405 );
+
    con->fd    = fd;
    con->state = CONN_READING_HEADERS;
 
@@ -34,5 +36,6 @@ void connection_destroy( Connection_t* con )
    }
 
    sand_string_destroy( &con->buf );
+   sand_string_destroy( &con->buf_for_error_405 );
    free( con );
 }
