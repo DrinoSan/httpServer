@@ -5,6 +5,7 @@
 
 #include "../Router.h"
 #include "../HttpResponse.h"
+#include "../HttpParser.h"
 
 // Dummy handlers for testing
 static void handler_home( Connection_t* con )    { (void)con; }
@@ -28,6 +29,7 @@ static HttpRequest_t make_request( int32_t method, char* path )
    req.method_int        = method;
    req.uri_view.data     = path;
    req.uri_view.size     = strlen( path );
+
    return req;
 }
 
@@ -214,7 +216,6 @@ void test_http11_path_with_query_string( void )
 // (RFC 7231 section 6.5.5)
 void test_http11_method_not_allowed( void )
 {
-   printf("ENTERING\n");
    // Register GET /resource but request POST /resource
    router_add_route( &router, SAND_HTTP_GET, "/resource", handler_home );
    // Register GET /resource but request POST /resource
@@ -581,6 +582,8 @@ void test_bug_405_allow_header_should_list_actual_methods( void )
    found( &con );
    TEST_ASSERT_EQUAL( 405, con.response.status_code );
 
+   http_response_serialize( &con.response, &con.buf );
+
    // BUG: Allow header currently says "GET, POST, HEAD" regardless of
    // what methods are actually registered for this path
    TEST_ASSERT_NOT_NULL( strstr( con.buf.data, "DELETE" ) );
@@ -600,9 +603,14 @@ void test_bug_query_string_should_not_break_routing( void )
 {
    router_add_route( &router, SAND_HTTP_GET, "/search", handler_home );
 
-   HttpRequest_t  req   = make_request( SAND_HTTP_GET, "/search?q=test" );
    Connection_t con = { 0 };
-   RouteHandler_t found = router_find_route( &router, &req, &con );
+   strcpy( con.buffer, "GET /search?q=test HTTP/1.1\r\nHost: 127.0.0.1:8080\r\n\r\n" );
+
+   ParseResult_t result = http_parser_parse_request(
+       con.buffer, con.header_len, &con.request );
+
+
+   RouteHandler_t found = router_find_route( &router, &con.request, &con );
 
    // BUG: currently returns 404 handler because "/search?q=test" != "/search"
    TEST_ASSERT_EQUAL_PTR( handler_home, found );

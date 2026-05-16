@@ -29,8 +29,8 @@ TEST_CFLAGS = $(CFLAGS) -Iunity/src -DUNITY_OUTPUT_COLOR
 tests/test_http_parser: tests/test_http_parser.c HttpParser.c Log.c HttpRequest.c $(UNITY_SRC) $(SANDLIB)
 	$(CC) $(TEST_CFLAGS) -o $@ tests/test_http_parser.c HttpParser.c Log.c HttpRequest.c $(UNITY_SRC) -Lsandlib -lsand
 
-tests/test_router: tests/test_router.c Router.c HttpResponse.c Log.c HttpRequest.c $(UNITY_SRC) $(SANDLIB)
-	$(CC) $(TEST_CFLAGS) -o $@ tests/test_router.c Router.c HttpResponse.c Log.c HttpRequest.c $(UNITY_SRC) -Lsandlib -lsand
+tests/test_router: tests/test_router.c Router.c HttpResponse.c Log.c HttpRequest.c HttpParser.c $(UNITY_SRC) $(SANDLIB)
+	$(CC) $(TEST_CFLAGS) -o $@ tests/test_router.c Router.c HttpResponse.c Log.c HttpRequest.c HttpParser.c $(UNITY_SRC) -Lsandlib -lsand
 
 tests/test_http_request: tests/test_http_request.c HttpRequest.c HttpRequest.c $(UNITY_SRC) $(SANDLIB)
 	$(CC) $(TEST_CFLAGS) -o $@ tests/test_http_request.c HttpRequest.c $(UNITY_SRC) -Lsandlib -lsand

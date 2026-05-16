@@ -625,6 +625,24 @@ ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
             goto done;
             break;
          }
+         case '?':
+         {
+            request->uri_end = pos;
+            state            = sand_http_09;
+
+            // Creating the string
+            request->uri_view.data = request->uri_start;
+            request->uri_view.size = request->uri_end - request->uri_start;
+            if ( request->uri_view.size > 255 )
+            {
+               return PARSE_ERROR_PATH_TOO_LONG;
+            }
+            break;
+            // @TODO: Need to handle this in future
+            //request->complex_uri = 1;
+            //state                = sand_uri;
+            //break;
+         }
          case '/':
          {
             request->complex_uri = 1;
