@@ -38,7 +38,8 @@ void test_add_route_then_find( void )
 {
    router_add_route( &router, SAND_HTTP_GET, "/", handler_home );
    HttpRequest_t  req   = make_request( SAND_HTTP_GET, "/" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
    TEST_ASSERT_EQUAL_PTR( handler_home, found );
 }
 
@@ -47,7 +48,8 @@ void test_find_nonexistent_route_returns_404_handler( void )
 {
    router_add_route( &router, SAND_HTTP_GET, "/", handler_home );
    HttpRequest_t  req   = make_request( SAND_HTTP_GET, "/nope" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
 
    // Should return a handler (the 404 handler), not NULL
    TEST_ASSERT_NOT_NULL( found );
@@ -65,9 +67,12 @@ void test_add_multiple_routes_find_each( void )
    HttpRequest_t req2 = make_request( SAND_HTTP_GET, "/about" );
    HttpRequest_t req3 = make_request( SAND_HTTP_POST, "/api" );
 
-   TEST_ASSERT_EQUAL_PTR( handler_home, router_find_route( &router, &req1 ) );
-   TEST_ASSERT_EQUAL_PTR( handler_about, router_find_route( &router, &req2 ) );
-   TEST_ASSERT_EQUAL_PTR( handler_api, router_find_route( &router, &req3 ) );
+   Connection_t con1 = { 0 };
+   Connection_t con2 = { 0 };
+   Connection_t con3 = { 0 };
+   TEST_ASSERT_EQUAL_PTR( handler_home, router_find_route( &router, &req1, &con1 ) );
+   TEST_ASSERT_EQUAL_PTR( handler_about, router_find_route( &router, &req2, &con2 ) );
+   TEST_ASSERT_EQUAL_PTR( handler_api, router_find_route( &router, &req3, &con3 ) );
 }
 
 //------------------------------------------------------------------------------
@@ -114,15 +119,18 @@ void test_exact_match_only( void )
 
    // Similar but different paths should not match
    HttpRequest_t req1 = make_request( SAND_HTTP_GET, "/homes" );
-   RouteHandler_t found = router_find_route( &router, &req1 );
+   Connection_t con1 = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req1, &con1 );
    TEST_ASSERT_NOT_EQUAL( handler_home, found );
 
    HttpRequest_t req2 = make_request( SAND_HTTP_GET, "/hom" );
-   found = router_find_route( &router, &req2 );
+   Connection_t con2= { 0 };
+   found = router_find_route( &router, &req2, &con2 );
    TEST_ASSERT_NOT_EQUAL( handler_home, found );
 
    HttpRequest_t req3 = make_request( SAND_HTTP_POST, "/home" );
-   found = router_find_route( &router, &req3 );
+   Connection_t con3 = { 0 };
+   found = router_find_route( &router, &req3, &con3 );
    TEST_ASSERT_NOT_EQUAL( handler_home, found );
 }
 
@@ -135,7 +143,8 @@ void test_http11_head_route_matching( void )
 {
    router_add_route( &router, SAND_HTTP_HEAD, "/", handler_home );
    HttpRequest_t  req   = make_request( SAND_HTTP_HEAD, "/" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
    TEST_ASSERT_EQUAL_PTR( handler_home, found );
 }
 
@@ -147,7 +156,8 @@ void test_http11_options_route( void )
    router_add_route( &router, SAND_HTTP_OPTIONS, "/", handler_home );
 
    HttpRequest_t  req   = make_request( SAND_HTTP_OPTIONS, "/" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
    TEST_ASSERT_EQUAL_PTR( handler_home, found );
 }
 
@@ -160,7 +170,8 @@ void test_http11_method_mismatch( void )
    router_add_route( &router, SAND_HTTP_GET, "/", handler_home );
 
    HttpRequest_t  req   = make_request( SAND_HTTP_POST, "/" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
    TEST_ASSERT_NOT_EQUAL( handler_home, found );
 }
 
@@ -171,11 +182,11 @@ void test_http11_method_mismatch( void )
 void test_http11_404_handler_sets_response( void )
 {
    HttpRequest_t  req     = make_request( SAND_HTTP_GET, "/nonexistent" );
-   RouteHandler_t handler = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t handler = router_find_route( &router, &req, &con );
    TEST_ASSERT_NOT_NULL( handler );
 
    // Call the 404 handler and check it sets status code
-   Connection_t con = { 0 };
    handler( &con );
    TEST_ASSERT_EQUAL( 404, con.response.status_code );
    TEST_ASSERT_EQUAL_STRING( "Not Found", http_status_text( con.response.status_code ) );
@@ -190,7 +201,8 @@ void test_http11_path_with_query_string( void )
 
    // With query string - currently won't match because of exact match
    HttpRequest_t  req   = make_request( SAND_HTTP_GET, "/search?q=test" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
 
    // TODO: Implement query string stripping for route matching
    TEST_IGNORE_MESSAGE( "TODO: Strip query string from path before route matching" );
@@ -208,15 +220,13 @@ void test_http11_method_not_allowed( void )
    // Register GET /resource but request POST /resource
 
    HttpRequest_t  req   = make_request( SAND_HTTP_POST, "/resource" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
 
    // Currently returns 404 handler — should return a 405 handler instead
    // Once implemented:
-   printf("qihjdiqowhdiq\n");
-   Connection_t con = { 0 };
    sand_string_create( &con.buf );
    found( &con );
-   printf("HERE\n");
    TEST_ASSERT_EQUAL( 405, con.response.status_code );
    (void)found;
 }
@@ -228,7 +238,8 @@ void test_http11_trace_method( void )
 {
    // Server should either handle it or return 405/501
    HttpRequest_t  req   = make_request( SAND_HTTP_TRACE, "/" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
 
    // Once implemented — either a dedicated TRACE handler or explicit rejection:
    // Connection_t con = { 0 };
@@ -246,7 +257,8 @@ void test_http11_trace_method( void )
 void test_http11_connect_method( void )
 {
    HttpRequest_t  req   = make_request( SAND_HTTP_CONNECT, "localhost:443" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
 
    // Once implemented:
    // Connection_t con = { 0 };
@@ -263,11 +275,11 @@ void test_http11_unknown_method_501( void )
 {
    // SAND_HTTP_UNKNOWN is not a routable method
    HttpRequest_t  req   = make_request( SAND_HTTP_UNKNOWN, "/" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
 
    // Currently returns 404 handler — should return 501 handler
    // Once implemented:
-   Connection_t con = { 0 };
    found( &con );
    TEST_ASSERT_EQUAL( 501, con.response.status_code );
    //TEST_IGNORE_MESSAGE( "TODO: Return 501 Not Implemented for unrecognized methods" );
@@ -284,10 +296,10 @@ void test_http11_405_includes_allow_header( void )
 
    // Request with POST — path exists but method doesn't
    HttpRequest_t  req   = make_request( SAND_HTTP_POST, "/resource" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
 
    // Once implemented, the 405 handler should set an Allow header:
-   Connection_t con = { 0 };
    found( &con );
    TEST_ASSERT_EQUAL( 405, con.response.status_code );
    const char* allow = strstr( con.buf.data, "Allow" );
@@ -311,7 +323,8 @@ void test_http11_options_asterisk( void )
    router_add_route( &router, SAND_HTTP_GET, "/", handler_home );
 
    HttpRequest_t  req   = make_request( SAND_HTTP_OPTIONS, "*" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
 
    // Once implemented, should return a handler that lists all supported methods:
    // Connection_t con = { 0 };
@@ -336,9 +349,12 @@ void test_same_path_different_methods( void )
    HttpRequest_t req2 = make_request( SAND_HTTP_POST, "/api" );
    HttpRequest_t req3 = make_request( SAND_HTTP_DELETE, "/api" );
 
-   TEST_ASSERT_EQUAL_PTR( handler_home, router_find_route( &router, &req1 ) );
-   TEST_ASSERT_EQUAL_PTR( handler_about, router_find_route( &router, &req2 ) );
-   TEST_ASSERT_EQUAL_PTR( handler_api, router_find_route( &router, &req3 ) );
+   Connection_t con1 = { 0 };
+   Connection_t con2 = { 0 };
+   Connection_t con3 = { 0 };
+   TEST_ASSERT_EQUAL_PTR( handler_home, router_find_route( &router, &req1, &con1 ) );
+   TEST_ASSERT_EQUAL_PTR( handler_about, router_find_route( &router, &req2, &con2 ) );
+   TEST_ASSERT_EQUAL_PTR( handler_api, router_find_route( &router, &req3, &con3 ) );
 }
 
 //------------------------------------------------------------------------------
@@ -346,11 +362,11 @@ void test_same_path_different_methods( void )
 void test_empty_router_returns_404( void )
 {
    HttpRequest_t  req   = make_request( SAND_HTTP_GET, "/" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
 
    TEST_ASSERT_NOT_NULL( found );
 
-   Connection_t con = { 0 };
    found( &con );
    TEST_ASSERT_EQUAL( 404, con.response.status_code );
 }
@@ -362,7 +378,8 @@ void test_delete_route_matching( void )
    router_add_route( &router, SAND_HTTP_DELETE, "/resource/42", handler_home );
 
    HttpRequest_t  req   = make_request( SAND_HTTP_DELETE, "/resource/42" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
    TEST_ASSERT_EQUAL_PTR( handler_home, found );
 }
 
@@ -373,7 +390,8 @@ void test_put_route_matching( void )
    router_add_route( &router, SAND_HTTP_PUT, "/resource/1", handler_about );
 
    HttpRequest_t  req   = make_request( SAND_HTTP_PUT, "/resource/1" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
    TEST_ASSERT_EQUAL_PTR( handler_about, found );
 }
 
@@ -384,7 +402,8 @@ void test_patch_route_matching( void )
    router_add_route( &router, SAND_HTTP_PATCH, "/resource/1", handler_api );
 
    HttpRequest_t  req   = make_request( SAND_HTTP_PATCH, "/resource/1" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
    TEST_ASSERT_EQUAL_PTR( handler_api, found );
 }
 
@@ -395,7 +414,8 @@ void test_trailing_slash_mismatch( void )
    router_add_route( &router, SAND_HTTP_GET, "/home", handler_home );
 
    HttpRequest_t  req   = make_request( SAND_HTTP_GET, "/home/" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
 
    // /home != /home/ with exact matching
    TEST_ASSERT_NOT_EQUAL( handler_home, found );
@@ -408,7 +428,8 @@ void test_trailing_slash_registered_no_trailing_request( void )
    router_add_route( &router, SAND_HTTP_GET, "/home/", handler_home );
 
    HttpRequest_t  req   = make_request( SAND_HTTP_GET, "/home" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
 
    TEST_ASSERT_NOT_EQUAL( handler_home, found );
 }
@@ -420,9 +441,9 @@ void test_405_for_wrong_method_on_existing_path( void )
    router_add_route( &router, SAND_HTTP_GET, "/users", handler_home );
 
    HttpRequest_t  req   = make_request( SAND_HTTP_DELETE, "/users" );
-   RouteHandler_t found = router_find_route( &router, &req );
-
    Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
+
    found( &con );
    TEST_ASSERT_EQUAL( 405, con.response.status_code );
 }
@@ -434,9 +455,9 @@ void test_unknown_method_returns_501( void )
    router_add_route( &router, SAND_HTTP_GET, "/", handler_home );
 
    HttpRequest_t  req   = make_request( SAND_HTTP_UNKNOWN, "/" );
-   RouteHandler_t found = router_find_route( &router, &req );
-
    Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
+
    found( &con );
    TEST_ASSERT_EQUAL( 501, con.response.status_code );
 }
@@ -452,12 +473,15 @@ void test_deep_nested_path_routing( void )
    HttpRequest_t req2 = make_request( SAND_HTTP_POST, "/api/v1/users/create" );
    HttpRequest_t req3 = make_request( SAND_HTTP_GET, "/api/v1/users" );
 
-   TEST_ASSERT_EQUAL_PTR( handler_home, router_find_route( &router, &req1 ) );
-   TEST_ASSERT_EQUAL_PTR( handler_about, router_find_route( &router, &req2 ) );
+   Connection_t con1 = { 0 };
+   Connection_t con2 = { 0 };
+   Connection_t con3 = { 0 };
+   TEST_ASSERT_EQUAL_PTR( handler_home, router_find_route( &router, &req1, &con1 ) );
+   TEST_ASSERT_EQUAL_PTR( handler_about, router_find_route( &router, &req2, &con2 ) );
 
    // Partial path should not match
    Connection_t con = { 0 };
-   RouteHandler_t found = router_find_route( &router, &req3 );
+   RouteHandler_t found = router_find_route( &router, &req3, &con3 );
    found( &con );
    TEST_ASSERT_EQUAL( 404, con.response.status_code );
 }
@@ -479,7 +503,8 @@ void test_many_routes_all_findable( void )
    {
       snprintf( path, sizeof( path ), "/r%d", i );
       HttpRequest_t  req   = make_request( SAND_HTTP_GET, path );
-      RouteHandler_t found = router_find_route( &router, &req );
+      Connection_t con = { 0 };
+      RouteHandler_t found = router_find_route( &router, &req, &con );
       TEST_ASSERT_EQUAL_PTR( handler_home, found );
    }
 }
@@ -489,9 +514,9 @@ void test_many_routes_all_findable( void )
 void test_404_handler_has_body( void )
 {
    HttpRequest_t  req     = make_request( SAND_HTTP_GET, "/nope" );
-   RouteHandler_t handler = router_find_route( &router, &req );
-
    Connection_t con = { 0 };
+   RouteHandler_t handler = router_find_route( &router, &req, &con );
+
    handler( &con );
    TEST_ASSERT_EQUAL( 404, con.response.status_code );
    TEST_ASSERT_NOT_NULL( con.response.body );
@@ -524,9 +549,9 @@ void test_route_count_increments( void )
 void test_bug_501_status_text_typo( void )
 {
    HttpRequest_t  req   = make_request( SAND_HTTP_UNKNOWN, "/" );
-   RouteHandler_t found = router_find_route( &router, &req );
-
    Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
+
    found( &con );
    TEST_ASSERT_EQUAL( 501, con.response.status_code );
    // Verified via centralized http_status_text() lookup
@@ -546,9 +571,9 @@ void test_bug_405_allow_header_should_list_actual_methods( void )
 
    // Request with GET — path exists but method doesn't
    HttpRequest_t  req   = make_request( SAND_HTTP_GET, "/resource" );
-   RouteHandler_t found = router_find_route( &router, &req );
-
    Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
+
    sand_string_create( &con.buf );
    found( &con );
    TEST_ASSERT_EQUAL( 405, con.response.status_code );
@@ -573,7 +598,8 @@ void test_bug_query_string_should_not_break_routing( void )
    router_add_route( &router, SAND_HTTP_GET, "/search", handler_home );
 
    HttpRequest_t  req   = make_request( SAND_HTTP_GET, "/search?q=test" );
-   RouteHandler_t found = router_find_route( &router, &req );
+   Connection_t con = { 0 };
+   RouteHandler_t found = router_find_route( &router, &req, &con );
 
    // BUG: currently returns 404 handler because "/search?q=test" != "/search"
    TEST_ASSERT_EQUAL_PTR( handler_home, found );

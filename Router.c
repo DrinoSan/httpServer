@@ -79,9 +79,6 @@ RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request, Conn
    for ( int32_t i = 0; i < router->count_routes; i++ )
    {
       Route_t* route = &router->routes[ i ];
-      // LOG_WARN( "request->uri_view: %.*s route path: %s",
-      //           ( int ) request->uri_view.size, request->uri_view.data,
-      //           route->path );
 
       // We can skip if the size already is off
       if ( request->uri_view.size != strlen( route->path ) )
@@ -99,32 +96,16 @@ RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request, Conn
       if( memcmp( route->path, request->uri_view.data, request->uri_view.size ) == 0 )
       {
          // Path matches but method not remember method to later correctly assemble 405 info
-         con->methods_for_405_error | route->method_int;
+         con->methods_for_405_error |= route->method_int;
       }
    }
 
-   // We found no exact match need to check if the path matches but the method
-   // not
-   for ( int32_t i = 0; i < router->count_routes; i++ )
+   if( con->methods_for_405_error == 0 )
    {
-      Route_t* route = &router->routes[ i ];
-      // LOG_WARN( "request->uri_view: %.*s route path: %s",
-      //           ( int ) request->uri_view.size, request->uri_view.data,
-      //           route->path );
-
-      if ( request->uri_view.size != strlen( route->path ) )
-      {
-         continue;
-      }
-
-      if ( memcmp( route->path, request->uri_view.data,
-                   request->uri_view.size ) == 0 )
-      {
-         return handle_405_method_path_no_match;
-      }
+      return handle_404_not_found;
    }
 
-   return handle_404_not_found;
+   return handle_405_method_path_no_match;
 }
 
 //------------------------------------------------------------------------------
@@ -142,18 +123,24 @@ void handle_405_method_path_no_match( Connection_t* con )
    con->response.body =
        "<h1>Sorry, the path you requested does not match with any method</h1>";
 
+   sand_string_append( &con->buf, "Allow: " );
+
    unsigned int bits = con->methods_for_405_error & SAND_HTTP_ALL_METHODS;
    while( bits )
    {
       unsigned int method = bits & (-bits);
 
+      sand_string_append( &con->buf, sand_http_method_to_string( method ) );
 
       bits &= bits - 1;
+
+      if( bits == 0 )
+      {
+         break;
+      }
+
+      sand_string_append( &con->buf, ", " );
    }
-
-
-
-   sand_string_append( &con->buf, "Allow: GET, POST, HEAD, PATCH, DELETE" );
 }
 
 //------------------------------------------------------------------------------
