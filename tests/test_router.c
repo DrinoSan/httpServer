@@ -301,6 +301,9 @@ void test_http11_405_includes_allow_header( void )
 
    // Once implemented, the 405 handler should set an Allow header:
    found( &con );
+
+   http_response_serialize( &con.response, &con.buf );
+
    TEST_ASSERT_EQUAL( 405, con.response.status_code );
    const char* allow = strstr( con.buf.data, "Allow" );
    if( allow == NULL )
