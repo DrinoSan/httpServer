@@ -32,3 +32,5 @@ void server_destroy( Server_t* server );
 
 // Main loop, receiving and dispatching connections
 void server_start( Server_t* server );
+
+void server_serve_static_files( const char* file_path, const char* endpoint );

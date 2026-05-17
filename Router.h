@@ -4,12 +4,6 @@
 
 #define MAX_ROUTES 32
 
-typedef struct
-{
-   void ( *fn )( void* ctx );
-   void* ctx;
-} CallBack_t;
-
 typedef void ( *RouteHandler_t )( Connection_t* con );
 
 typedef struct
