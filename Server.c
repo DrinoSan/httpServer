@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>   // for memset
@@ -19,6 +20,9 @@
 void server_setup_worker( Server_t* server );
 void server_handle_parsing_error( Connection_t* con, ParseResult_t result );
 void server_serialize_and_send_response( Connection_t* response );
+
+//------------------------------------------------------------------------------
+void sigint_handler( int sig );
 
 // Thread func
 void* server_start_worker_event_loop( void* workerArgs );
@@ -54,6 +58,12 @@ void server_destroy( Server_t* server )
 //------------------------------------------------------------------------------
 void server_start( Server_t* server )
 {
+   struct sigaction sa = {
+       .sa_handler = sigint_handler,
+       .sa_flags   = 0,
+   };
+   sigemptyset(&sa.sa_mask);
+
    while ( true )
    {
       int clientFD = socketHandler_acceptConnection( &server->socketHandler );
@@ -61,6 +71,11 @@ void server_start( Server_t* server )
       fcntl( clientFD, F_SETFL,
              flags | O_NONBLOCK );   // Set non-blocking so recv/send never
                                      // block the worker's event loop
+      if( sigaction( SIGINT, &sa, NULL ) == -1 )
+      {
+         perror( "sigaction" );
+         exit(1);
+      }
 
       // Here i need to setup the connection
       Connection_t* connection = connection_create_heap( clientFD );
@@ -368,4 +383,14 @@ void server_serialize_and_send_response( Connection_t* con )
    send( con->fd, con->buf.data, con->buf.size, 0 );
    LOG_WARN( "Sending response buffer:\n%s\n", con->buf.data );
    sand_string_destroy( &con->buf );
+}
+
+//------------------------------------------------------------------------------
+void sigint_handler( int sig )
+{
+   (void)sig;
+   const char msg[] = "Server shutting down!\n";
+   write( 1, msg, sizeof( msg ) - 1 );
+   fflush(stdout);
+   exit(1);
 }
