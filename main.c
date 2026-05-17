@@ -16,6 +16,7 @@ int main()
    server_create( &server );
 
    router_add_route( &server.router, SAND_HTTP_GET, "/home", handle_index );
+   server_serve_static_files( &server, "home", "/static/" );
 
    server_start( &server );
 

@@ -21,6 +21,9 @@ void server_setup_worker( Server_t* server );
 void server_handle_parsing_error( Connection_t* con, ParseResult_t result );
 void server_serialize_and_send_response( Connection_t* response );
 
+// Static file handler
+void server_serve_static_files_handler( Connection_t* con );
+
 //------------------------------------------------------------------------------
 void sigint_handler( int sig );
 
@@ -386,11 +389,16 @@ void server_serialize_and_send_response( Connection_t* con )
 }
 
 //------------------------------------------------------------------------------
-void server_serve_static_files( const char* file_path, const char* endpoint )
+void server_serve_static_files_handler( Connection_t* con )
 {
-   // Register static route
-   //
-   //
+   LOG_WARN( "Called serving static files ");
+}
+
+//------------------------------------------------------------------------------
+void server_serve_static_files( Server_t* server, const char* file_path,
+                                const char* endpoint )
+{
+   router_add_static( &server->router, SAND_HTTP_GET, endpoint, server_serve_static_files_handler );
 }
 
 //------------------------------------------------------------------------------
