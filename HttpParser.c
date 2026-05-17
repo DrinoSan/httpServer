@@ -639,12 +639,8 @@ ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
                return PARSE_ERROR_PATH_TOO_LONG;
             }
 
-            request->uri_args_start = pos + 1;   // skip the ?
+            request->uri_args_start = pos + 1;   // skip the '?'
             break;
-            // @TODO: Need to handle this in future
-            // request->complex_uri = 1;
-            // state                = sand_uri;
-            // break;
          }
          case '/':
          {
