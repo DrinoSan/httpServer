@@ -62,7 +62,7 @@ void server_start( Server_t* server )
        .sa_handler = sigint_handler,
        .sa_flags   = 0,
    };
-   sigemptyset(&sa.sa_mask);
+   sigemptyset( &sa.sa_mask );
 
    while ( true )
    {
@@ -71,10 +71,10 @@ void server_start( Server_t* server )
       fcntl( clientFD, F_SETFL,
              flags | O_NONBLOCK );   // Set non-blocking so recv/send never
                                      // block the worker's event loop
-      if( sigaction( SIGINT, &sa, NULL ) == -1 )
+      if ( sigaction( SIGINT, &sa, NULL ) == -1 )
       {
          perror( "sigaction" );
-         exit(1);
+         exit( 1 );
       }
 
       // Here i need to setup the connection
@@ -386,11 +386,19 @@ void server_serialize_and_send_response( Connection_t* con )
 }
 
 //------------------------------------------------------------------------------
+void server_serve_static_files( const char* file_path, const char* endpoint )
+{
+   // Register static route
+   //
+   //
+}
+
+//------------------------------------------------------------------------------
 void sigint_handler( int sig )
 {
-   (void)sig;
+   ( void ) sig;
    const char msg[] = "Server shutting down!\n";
    write( 1, msg, sizeof( msg ) - 1 );
-   fflush(stdout);
-   exit(1);
+   fflush( stdout );
+   exit( 1 );
 }

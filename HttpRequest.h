@@ -32,7 +32,7 @@
 // By Doubeling we shift the one bit to the left (Division would shift right) Then if we subtract one if fills all the bits after with one
 // clang-format on
 
-const char *sand_http_method_to_string(uint32_t method);
+const char* sand_http_method_to_string( uint32_t method );
 
 typedef struct
 {
@@ -60,6 +60,10 @@ typedef struct
    char*              uri_start;
    char*              uri_end;
    sand_string_view_t uri_view;
+
+   char*              uri_args_start;
+   char*              uri_args_end;
+   sand_string_view_t uri_args_view;
 
    char* host_start;
    char* host_end;

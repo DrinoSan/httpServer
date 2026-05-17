@@ -67,7 +67,8 @@ void router_add_route( Router_t* router, int32_t method, const char* path,
 }
 
 //------------------------------------------------------------------------------
-RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request, Connection_t* con )
+RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request,
+                                  Connection_t* con )
 {
    if ( request->method_int & ~SAND_HTTP_ALL_METHODS ||
         request->method_int == SAND_HTTP_UNKNOWN )
@@ -93,14 +94,16 @@ RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request, Conn
          return route->handler;
       }
 
-      if( memcmp( route->path, request->uri_view.data, request->uri_view.size ) == 0 )
+      if ( memcmp( route->path, request->uri_view.data,
+                   request->uri_view.size ) == 0 )
       {
-         // Path matches but method not remember method to later correctly assemble 405 info
+         // Path matches but method not remember method to later correctly
+         // assemble 405 info
          con->methods_for_405_error |= route->method_int;
       }
    }
 
-   if( con->methods_for_405_error == 0 )
+   if ( con->methods_for_405_error == 0 )
    {
       return handle_404_not_found;
    }
@@ -124,15 +127,16 @@ void handle_405_method_path_no_match( Connection_t* con )
        "<h1>Sorry, the path you requested does not match with any method</h1>";
 
    unsigned int bits = con->methods_for_405_error & SAND_HTTP_ALL_METHODS;
-   while( bits )
+   while ( bits )
    {
-      unsigned int method = bits & (-bits);
+      unsigned int method = bits & ( -bits );
 
-      sand_string_append( &con->buf_for_error_405, sand_http_method_to_string( method ) );
+      sand_string_append( &con->buf_for_error_405,
+                          sand_http_method_to_string( method ) );
 
       bits &= bits - 1;
 
-      if( bits == 0 )
+      if ( bits == 0 )
       {
          break;
       }
@@ -140,7 +144,8 @@ void handle_405_method_path_no_match( Connection_t* con )
       sand_string_append( &con->buf_for_error_405, ", " );
    }
 
-   http_response_set_header( &con->response, "Allow", con->buf_for_error_405.data );
+   http_response_set_header( &con->response, "Allow",
+                             con->buf_for_error_405.data );
 }
 
 //------------------------------------------------------------------------------

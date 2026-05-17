@@ -76,6 +76,7 @@ ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
       sand_after_slash_in_uri,
       sand_check_uri,
       sand_uri,
+      sand_uri_args,
       sand_http_09,
       sand_http_H,
       sand_http_HT,
@@ -628,7 +629,7 @@ ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
          case '?':
          {
             request->uri_end = pos;
-            state            = sand_http_09;
+            state            = sand_uri_args;
 
             // Creating the string
             request->uri_view.data = request->uri_start;
@@ -637,11 +638,9 @@ ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
             {
                return PARSE_ERROR_PATH_TOO_LONG;
             }
+
+            request->uri_args_start = pos + 1;   // skip the '?'
             break;
-            // @TODO: Need to handle this in future
-            //request->complex_uri = 1;
-            //state                = sand_uri;
-            //break;
          }
          case '/':
          {
@@ -669,6 +668,28 @@ ParseResult_t http_parser_parse_request_line( HttpRequest_t* request,
             break;
          }
          }
+         break;
+      }
+
+      case sand_uri_args:
+      {
+         switch ( ch )
+         {
+         case ' ':
+         {
+            request->uri_args_view.data = request->uri_args_start;
+
+            request->uri_args_end = pos;
+            request->uri_args_view.size =
+                request->uri_args_end - request->uri_args_start;
+
+            state = sand_http_09;
+            break;
+         }
+
+         break;
+         }
+
          break;
       }
 
