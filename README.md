@@ -200,58 +200,12 @@ The project uses the [Unity](https://github.com/ThrowTheSwitch/Unity) C test fra
 | `test_http_request` | Header lookup, string view handling, missing headers |
 | `test_http_response` | Response serialization, status codes, Content-Length, body handling |
 
-- Tests prefixed `test_bug_` assert correct behavior but **fail** until the underlying bugs are fixed
-- Tests with `TEST_IGNORE_MESSAGE("TODO: ...")` are TDD placeholders for features not yet implemented
-- Run `make test` to see current pass/fail/ignore counts
-
-## Known Bugs
-
-9 bugs are caught by failing unit tests (prefixed `test_bug_`). Additional critical issues found via code review are in `architecture.md` sections 14-16.
-
-### Caught by Tests (9)
-
-| Bug | Location | Impact |
-|-----|----------|--------|
-| HEAD method parses to UNKNOWN | HttpParser.c case 4 | Health checks fail |
-| PATCH method parses to UNKNOWN | HttpParser.c no case 5 | REST APIs incomplete |
-| CL+TE conflict checks "host" instead of actual headers | HttpParser.c:934-943 | Security: request smuggling risk |
-| 501 status text typo "Unsuported Method" | Router.c:146 | Non-compliant response |
-| 405 Allow header hardcodes "GET, POST, HEAD" | Router.c:139 | Wrong Allow header for all 405s |
-| Query strings break routing | Router.c router_find_route | `/path?q=x` returns 404 |
-| Custom response headers not serialized | HttpResponse.c | No Content-Type, Location, CORS, etc. |
-
-### Found via Code Review (critical, no tests yet)
-
-| Bug | Location | Impact |
-|-----|----------|--------|
-| POST/PUT body never read (condition checks GET only) | Server.c:220 | All POST/PUT handlers get null body |
-| 3 missing ParseResult_t cases hit assert(false) | Server.c:352 | Worker thread crashes on malformed requests |
-| accept() failure not checked before use | Server.c:59 | fd=-1 corrupts worker event loop |
-| atoi() on non-null-terminated string view | Server.c:224 | Undefined behavior on Content-Length parsing |
-
 ## Limitations
 
 - **macOS only**: uses kqueue (no epoll/IOCP support)
 - **No TLS/HTTPS**: plaintext HTTP only
 - **No keep-alive**: connections close after each response
 - **No chunked encoding**: Transfer-Encoding: chunked is parsed but not decoded
-
-## Roadmap
-
-See [`architecture.md`](architecture.md) for the full architecture analysis and improvement roadmap. It covers:
-
-- Module dependency analysis and decoupling plan
-- Memory and ownership model
-- Server.c decomposition into smaller modules
-- Parser, router, and response serialization improvements
-- Threading model and thread safety assessment
-- Sandlib extensions needed (`sand_string_append_n`, `sand_string_view_to_int`, etc.)
-- 5-phase implementation roadmap (bug fixes -> robustness -> keep-alive -> refactoring -> extended features)
-
-**Top 3 priorities** (from architecture.md):
-1. Serialize `response.headers[]` — unlocks Content-Type, Location, CORS, Set-Cookie
-2. Strip query strings in router — any URL with parameters currently fails to route
-3. Recognize HEAD and PATCH methods — without HEAD, health checks fail
 
 ## Dependencies
 
