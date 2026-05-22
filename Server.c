@@ -392,6 +392,51 @@ void server_serialize_and_send_response( Connection_t* con )
 void server_serve_static_files_handler( Connection_t* con )
 {
    LOG_WARN( "Called serving static files " );
+
+   // parse prefix away, i only support single prefix meaning /static/home.html
+   // is valid But /static/secondStatic/home.html would not be supported So now
+   // i want to parse away the prefix
+
+   char* c = con->request.uri_view.data;
+   // Skip the first '/'
+   c++;
+
+   for ( ; c != con->request.uri_view.data + con->request.uri_view.size; c++ )
+   {
+      if ( *c == '/' )
+      {
+         c++;
+         break;
+      }
+   }
+
+   sand_string_view_t target_view;
+   target_view.data = c;
+   target_view.size =
+       ( con->request.uri_view.data + con->request.uri_view.size ) - c;
+
+   FILE* fp = NULL;
+   char  buff[ 100 ];
+
+   memcpy( buff, target_view.data, target_view.size );
+   buff[ target_view.size ] = '\0';
+   fp                       = fopen( buff, "r" );
+
+   if ( fp == NULL )
+   {
+      LOG_WARN( "Couldn't Open the File" );
+      return;
+   }
+
+   fseek( fp, 0, SEEK_END );
+   size_t file_size = ftell( fp );
+
+   fseek( fp, 0, SEEK_SET );
+
+   char file_buff[ 1024 ];
+   fread( file_buff, file_size, 1, fp );
+   LOG_INFO( "Data Read [%s]", file_buff );
+   fclose( fp );
 }
 
 //------------------------------------------------------------------------------
