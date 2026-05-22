@@ -10,7 +10,8 @@ void handle_405_method_path_no_match( Connection_t* con );
 void handle_501_unsupported_method( Connection_t* con );
 
 //------------------------------------------------------------------------------
-void router_add_static( Router_t* router, int32_t method, const char* path, RouteHandler_t handler )
+void router_add_static( Router_t* router, int32_t method, const char* path,
+                        RouteHandler_t handler )
 {
    if ( method & ~SAND_HTTP_ALL_METHODS )
    {
@@ -39,12 +40,11 @@ void router_add_static( Router_t* router, int32_t method, const char* path, Rout
    strncpy( route->path, path,
             sizeof( route->path ) - 1 );   // -1 so i have space for \0 memset
                                            // already set all bytes to \0
-   route->handler = handler;
+   route->handler    = handler;
    route->match_type = ROUTE_MATCH_PREFIX;
 
    router->count_routes++;
 }
-
 
 //------------------------------------------------------------------------------
 void router_add_route( Router_t* router, int32_t method, const char* path,
@@ -98,7 +98,7 @@ void router_add_route( Router_t* router, int32_t method, const char* path,
    strncpy( route->path, path,
             sizeof( route->path ) - 1 );   // -1 so i have space for \0 memset
                                            // already set all bytes to \0
-   route->handler = handler;
+   route->handler    = handler;
    route->match_type = ROUTE_MATCH_EXACT;
 
    router->count_routes++;
@@ -217,4 +217,3 @@ void handle_501_unsupported_method( Connection_t* con )
    con->response.body =
        "<h1>Sorry, the method you requested is not supported</h1>";
 }
-

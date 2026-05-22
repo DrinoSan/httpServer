@@ -24,7 +24,8 @@ void http_response_serialize( HttpResponse_t* response, Sand_string_t* string );
 /// @param response which will be headers appended to
 /// @param name which is the name of th header
 /// @param value which is the value of the heade
-void http_response_set_header( HttpResponse_t* response, const char* name, const char* value );
+void http_response_set_header( HttpResponse_t* response, const char* name,
+                               const char* value );
 
 // -----------------------------------------------------------------------------
 /// Returns the standard reason phrase for a given HTTP status code.

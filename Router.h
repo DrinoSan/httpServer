@@ -34,4 +34,5 @@ void router_add_route( Router_t* router, int32_t method, const char* path,
 RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request,
                                   Connection_t* con );
 
-void router_add_static( Router_t* router, int32_t method, const char* path, RouteHandler_t handler );
+void router_add_static( Router_t* router, int32_t method, const char* path,
+                        RouteHandler_t handler );

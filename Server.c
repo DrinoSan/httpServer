@@ -391,14 +391,15 @@ void server_serialize_and_send_response( Connection_t* con )
 //------------------------------------------------------------------------------
 void server_serve_static_files_handler( Connection_t* con )
 {
-   LOG_WARN( "Called serving static files ");
+   LOG_WARN( "Called serving static files " );
 }
 
 //------------------------------------------------------------------------------
 void server_serve_static_files( Server_t* server, const char* file_path,
                                 const char* endpoint )
 {
-   router_add_static( &server->router, SAND_HTTP_GET, endpoint, server_serve_static_files_handler );
+   router_add_static( &server->router, SAND_HTTP_GET, endpoint,
+                      server_serve_static_files_handler );
 }
 
 //------------------------------------------------------------------------------
