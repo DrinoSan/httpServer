@@ -16,6 +16,9 @@
 #include "Sand_string.h"
 #include "Server.h"
 
+// SandLib
+#include "sand_file.h"
+
 //======================PRIVATE INTERFACE DECLARATION==========================
 void server_setup_worker( Server_t* server );
 void server_handle_parsing_error( Connection_t* con, ParseResult_t result );
@@ -415,28 +418,27 @@ void server_serve_static_files_handler( Connection_t* con )
    target_view.size =
        ( con->request.uri_view.data + con->request.uri_view.size ) - c;
 
-   FILE* fp = NULL;
-   char  buff[ 100 ];
+   // to hold file name
+   char buff[ 100 ];
 
    memcpy( buff, target_view.data, target_view.size );
    buff[ target_view.size ] = '\0';
-   fp                       = fopen( buff, "r" );
 
-   if ( fp == NULL )
+   sand_file_t file;
+   sand_file_create( &file );
+   sand_file_open_and_read( &file, buff );
+   if ( file.content.size == 0 )
    {
-      LOG_WARN( "Couldn't Open the File" );
-      return;
+      LOG_WARN( "Could not open file" );
+   }
+   else
+   {
+      LOG_INFO( "Data Read [%s]", file.content.data );
    }
 
-   fseek( fp, 0, SEEK_END );
-   size_t file_size = ftell( fp );
-
-   fseek( fp, 0, SEEK_SET );
-
-   char file_buff[ 1024 ];
-   fread( file_buff, file_size, 1, fp );
-   LOG_INFO( "Data Read [%s]", file_buff );
-   fclose( fp );
+   http_response_set_header( &con->response, "Content-Type", "text/html" );
+   con->response.status_code = 200;
+   con->response.body        = file.content.data;
 }
 
 //------------------------------------------------------------------------------
