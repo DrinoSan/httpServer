@@ -76,8 +76,6 @@ void http_response_set_header( HttpResponse_t* response, const char* name,
    HttpResponseHeader_t* header = &response->headers[ response->header_count ];
    strncpy( header->name, name, MAX_HEADER_NAME_LEN - 1 );
 
-   LOG_WARN( "HEADER NAME ADDED: %s", header->name );
-
    sand_string_append( &header->value, value );
    response->header_count++;
 }
