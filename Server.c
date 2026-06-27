@@ -430,6 +430,11 @@ void server_serve_static_files_handler( Connection_t* con )
       if ( target_view.data[ i ] == '.' )
       {
          i++;
+         if ( target_view.size - i > 10 )
+         {
+            assert( false && "Extension to long" );
+         }
+
          memcpy( file_extension, target_view.data + i, target_view.size - i );
       }
    }
@@ -469,7 +474,8 @@ void server_serve_static_files_handler( Connection_t* con )
 
    if ( mime != NULL )
    {
-      // I know i could directly set that inside the for loop above but i wanted to have all the setting of data response in one part
+      // I know i could directly set that inside the for loop above but i wanted
+      // to have all the setting of data response in one part
       http_response_set_header( &con->response, "Content-Type", mime );
    }
 
