@@ -419,24 +419,60 @@ void server_serve_static_files_handler( Connection_t* con )
        ( con->request.uri_view.data + con->request.uri_view.size ) - c;
 
    // to hold file name
-   char buff[ 100 ];
+   char file_name[ 100 ];
 
-   memcpy( buff, target_view.data, target_view.size );
-   buff[ target_view.size ] = '\0';
+   memcpy( file_name, target_view.data, target_view.size );
+   file_name[ target_view.size ] = '\0';
 
+   char file_extension[ 10 ] = { 0 };
+   for ( size_t i = 0; i < target_view.size; i++ )
+   {
+      if ( target_view.data[ i ] == '.' )
+      {
+         i++;
+         memcpy( file_extension, target_view.data + i, target_view.size - i );
+      }
+   }
+
+   size_t extension_length = strlen( file_extension );
+
+   // @TODO: implement in sandlib
+   // sand_string_view_compare() or is_equal
+   const char* mime = NULL;
+   for ( size_t i = 0; i < sizeof( mime_types ) / sizeof( mime_types[ 0 ] );
+         i++ )
+   {
+      if ( extension_length == mime_types[ i ].len &&
+           memcmp( file_extension, mime_types[ i ].ext, extension_length ) ==
+               0 )
+      {
+         mime = mime_types[ i ].mime;
+         // http_response_set_header( &con->response, "Content-Type",
+         // mime_types[ i ].mime );
+         break;
+      }
+   }
+
+   // @TODO: files should not be read everytime on request. We should hold them
+   // prepared
    sand_file_t file;
    sand_file_create( &file );
-   sand_file_open_and_read( &file, buff );
+   sand_file_open_and_read( &file, file_name );
    if ( file.content.size == 0 )
    {
       LOG_WARN( "Could not open file" );
    }
    else
    {
-      LOG_INFO( "Data Read [%s]", file.content.data );
+      LOG_INFO( "Data Read \n[\n%s]", file.content.data );
    }
 
-   http_response_set_header( &con->response, "Content-Type", "text/html" );
+   if ( mime != NULL )
+   {
+      // I know i could directly set that inside the for loop above but i wanted to have all the setting of data response in one part
+      http_response_set_header( &con->response, "Content-Type", mime );
+   }
+
    con->response.status_code = 200;
    con->response.body        = file.content.data;
 }
