@@ -26,3 +26,15 @@ void log_warn( const char* fmt, const char* file, int line, ... )
 
    printf( " | %s:%d\n", file, line );
 }
+
+void log_err( const char* fmt, const char* file, int line, ... )
+{
+   printf( "\033[31m[ERR]\033[0m " );
+
+   va_list args;
+   va_start( args, line );
+   vprintf( fmt, args );
+   va_end( args );
+
+   printf( " | %s:%d\n", file, line );
+}
