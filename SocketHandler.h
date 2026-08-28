@@ -8,10 +8,10 @@
 typedef struct
 {
    int socketFD;
-}
-SocketHandler_t;
+} SocketHandler_t;
 
-void socketHandler_create( SocketHandler_t* socketHandler, int domain, int type, int protocol );
+void socketHandler_create( SocketHandler_t* socketHandler, int domain, int type,
+                           int protocol );
 
 void socketHandler_destroy( SocketHandler_t* socketHandler );
 
@@ -28,10 +28,10 @@ void socketHandler_closeSocket( SocketHandler_t* socketHandler );
 
 // Reaading from socket with hardcoded timeout
 // Function can throw
-//int32_t socketHandler_readFromSocket( SocketHandler_t* socketHandler,
+// int32_t socketHandler_readFromSocket( SocketHandler_t* socketHandler,
 //                                      Connection_t*    conn );
 //
-//void socketHandler_writeToSocket( SocketHandler_t* Connection_t* conn,
+// void socketHandler_writeToSocket( SocketHandler_t* Connection_t* conn,
 //                                  const char*                    data );
 
 // NOT USED //

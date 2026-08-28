@@ -61,6 +61,7 @@ typedef struct
    char*              uri_end;
    sand_string_view_t uri_view;
 
+   // For query parameters
    char*              uri_args_start;
    char*              uri_args_end;
    sand_string_view_t uri_args_view;

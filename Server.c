@@ -16,10 +16,16 @@
 #include "Sand_string.h"
 #include "Server.h"
 
+// SandLib
+#include "sand_file.h"
+
 //======================PRIVATE INTERFACE DECLARATION==========================
 void server_setup_worker( Server_t* server );
 void server_handle_parsing_error( Connection_t* con, ParseResult_t result );
 void server_serialize_and_send_response( Connection_t* response );
+
+// Static file handler
+void server_serve_static_files_handler( Connection_t* con );
 
 //------------------------------------------------------------------------------
 void sigint_handler( int sig );
@@ -386,11 +392,103 @@ void server_serialize_and_send_response( Connection_t* con )
 }
 
 //------------------------------------------------------------------------------
-void server_serve_static_files( const char* file_path, const char* endpoint )
+void server_serve_static_files_handler( Connection_t* con )
 {
-   // Register static route
-   //
-   //
+   LOG_WARN( "Called serving static files " );
+
+   // parse prefix away, i only support single prefix meaning /static/home.html
+   // is valid But /static/secondStatic/home.html would not be supported So now
+   // i want to parse away the prefix
+
+   char* c = con->request.uri_view.data;
+   // Skip the first '/'
+   c++;
+
+   for ( ; c != con->request.uri_view.data + con->request.uri_view.size; c++ )
+   {
+      if ( *c == '/' )
+      {
+         c++;
+         break;
+      }
+   }
+
+   sand_string_view_t target_view;
+   target_view.data = c;
+   target_view.size =
+       ( con->request.uri_view.data + con->request.uri_view.size ) - c;
+
+   // to hold file name
+   char file_name[ 100 ];
+
+   memcpy( file_name, target_view.data, target_view.size );
+   file_name[ target_view.size ] = '\0';
+
+   char file_extension[ 10 ] = { 0 };
+   for ( size_t i = 0; i < target_view.size; i++ )
+   {
+      if ( target_view.data[ i ] == '.' )
+      {
+         i++;
+         if ( target_view.size - i > 10 )
+         {
+            assert( false && "Extension to long" );
+         }
+
+         memcpy( file_extension, target_view.data + i, target_view.size - i );
+      }
+   }
+
+   size_t extension_length = strlen( file_extension );
+
+   // @TODO: implement in sandlib
+   // sand_string_view_compare() or is_equal
+   const char* mime = NULL;
+   for ( size_t i = 0; i < sizeof( mime_types ) / sizeof( mime_types[ 0 ] );
+         i++ )
+   {
+      if ( extension_length == mime_types[ i ].len &&
+           memcmp( file_extension, mime_types[ i ].ext, extension_length ) ==
+               0 )
+      {
+         mime = mime_types[ i ].mime;
+         // http_response_set_header( &con->response, "Content-Type",
+         // mime_types[ i ].mime );
+         break;
+      }
+   }
+
+   // @TODO: files should not be read everytime on request. We should hold them
+   // prepared
+   sand_file_t file;
+   sand_file_create( &file );
+   sand_file_open_and_read( &file, file_name );
+   if ( file.content.size == 0 )
+   {
+      LOG_WARN( "Could not open file" );
+   }
+   else
+   {
+      LOG_INFO( "Data Read \n[\n%s]", file.content.data );
+   }
+
+   if ( mime != NULL )
+   {
+      // I know i could directly set that inside the for loop above but i wanted
+      // to have all the setting of data response in one part
+      http_response_set_header( &con->response, "Content-Type", mime );
+   }
+
+   con->response.status_code = 200;
+   con->response.body        = file.content.data;
+}
+
+//------------------------------------------------------------------------------
+void server_serve_static_files( Server_t* server, const char* file_path,
+                                const char* endpoint )
+{
+   router_add_static( &server->router, SAND_HTTP_GET, endpoint,
+                      server_serve_static_files_handler );
 }
 
 //------------------------------------------------------------------------------
