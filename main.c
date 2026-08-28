@@ -6,6 +6,7 @@
 
 void handle_index( Connection_t* con )
 {
+   http_response_set_header( &con->response, "Content-Type", "text/html" );
    con->response.status_code = 200;
    con->response.body        = "<h1>Hello</h1>";
 }
