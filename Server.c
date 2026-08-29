@@ -85,10 +85,17 @@ void server_start( Server_t* server )
 
       // Here i need to setup the connection
       Connection_t* connection = connection_create_heap( clientFD );
+      if ( connection == NULL )
+      {
+         close( clientFD );
+         continue;
+      }
 
       // Only the main thread is accesing next_worker so we safe
       int32_t worker_idx  = server->next_worker;
       server->next_worker = ( server->next_worker + 1 ) % NUM_WORKERS;
+
+      connection->kqueueFd = server->worker_kqueue_fds[ worker_idx ];
 
       // Registering the new client in our kqueue
       struct kevent change;
@@ -171,6 +178,7 @@ void* server_start_worker_event_loop( void* args )
       {
          // Handle new client connection
          Connection_t* con = ( Connection_t* ) events[ i ].udata;
+         // ident and con->fd is the same
          LOG_INFO(
              "Got new Socket/client connection for socket %lu udata fd %d",
              events[ i ].ident, con->fd );
@@ -179,11 +187,30 @@ void* server_start_worker_event_loop( void* args )
          {
             // Timeout - Client sleeps or is bad. Timout register is done at
             // Set when state changes to CONN_READING_BODY
+            LOG_INFO( "Got timeout for fd <%d>", con->fd );
             connection_destroy( con );
             continue;
          }
          else if ( events[ i ].filter == EVFILT_READ )
          {
+            // Checking if client sent more data than BUFFER_SIZE
+            // if my buffer is exhausted recv would also return 0 but in this
+            // case it does not mean that i got a FIN
+            if ( con->bytes_read == BUFFER_SIZE )
+            {
+               // @TODO
+               if ( con->state == CONN_READING_HEADERS )
+               {
+                  // Return 431 error
+                  // 431 Request Header Fields Too Large.
+               }
+               else if ( con->state == CONN_READING_BODY )
+               {
+                  // Return 413 error
+                  // 413 Content Too Large
+               }
+            }
+
             // 10 to check if i really fill the same buffer should be
             // BUFFER_SIZE - con->bytes_read to avoid buffer overflow
             int32_t bytes_read = recv( con->fd, con->buffer + con->bytes_read,
@@ -192,6 +219,7 @@ void* server_start_worker_event_loop( void* args )
             if ( bytes_read == 0 )
             {
                // Client disconnected — remove from kqueue and close
+               LOG_INFO( "Got 0 bytes read for fd <%d>", con->fd );
                connection_destroy( con );
                continue;
             }
@@ -220,7 +248,7 @@ void* server_start_worker_event_loop( void* args )
                }
 
                // At this point i know i read all headers now content can be
-               // read
+               // read the +4 is because of "\r\n\r\n"
                con->header_len = ( end - con->buffer ) + 4;
 
                // Need to parse the headers
@@ -236,10 +264,13 @@ void* server_start_worker_event_loop( void* args )
 
                const sand_string_view_t* length_value_ptr =
                    http_request_find_header( &con->request, "content-length" );
-               // If its a GET request or no content_length provided we dont
+
+               const sand_string_view_t* chunk_value_ptr =
+                   http_request_find_header( &con->request,
+                                             "transfer-encoding" );
+               // If no content_length provided we dont
                // need to check the body
-               if ( con->request.method_int == SAND_HTTP_GET &&
-                    length_value_ptr != NULL )
+               if ( length_value_ptr != NULL || chunk_value_ptr != NULL )
                {
                   const char* length_value    = length_value_ptr->data;
                   con->request.content_length = atoi( length_value );
@@ -275,12 +306,6 @@ void* server_start_worker_event_loop( void* args )
                {
                   // Full request received — handle it
                   con->state = CONN_SENDING_RESPONSE;
-
-                  // Removing registered timer for connection
-                  struct kevent timer;
-                  EV_SET( &timer, con->fd, EVFILT_TIMER, EV_DELETE, 0, 0,
-                          NULL );
-                  kevent( kqueueFD, &timer, 1, NULL, 0, NULL );
                }
             }
          }
@@ -299,28 +324,45 @@ void* server_start_worker_event_loop( void* args )
             }
 
             server_serialize_and_send_response( con );
-            connection_destroy( con );
-            continue;
 
-            // const char* conn_header =
-            //     http_request_find_header( &con->request, "connection" );
-            // if ( conn_header != NULL && strcmp( conn_header, "close" ) == 0 )
-            //{
-            //    connection_destroy( con );
-            //    continue;
-            // }
+            if ( con->is_keep_alive == false )
+            {
+               // If keepalive is not set its safe to destroy the connection
+               connection_destroy( con );
+               continue;
+            }
 
-            //// Keep-alive: reset for next request
-            // con->state      = CONN_READING_HEADERS;
-            // con->bytes_read = 0;
-            // con->header_len = 0;
-            // memset( &con->request, 0, sizeof( HttpRequest_t ) );
-            // memset( con->buffer, 0, BUFFER_SIZE );
-
-            // struct kevent timer;
-            // EV_SET( &timer, con->fd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL );
-            // kevent( kqueueFD, &timer, 1, NULL, 0, NULL );
+            connection_reset( con );
          }
+      }
+   }
+}
+
+//------------------------------------------------------------------------------
+void server_request_keep_alive_check( Connection_t* con )
+{
+   // Default case always set. I think its alright because i save the http
+   // version in version_int
+   const sand_string_view_t* connection_header_value =
+       http_request_find_header( &con->request, "connection" );
+
+   con->is_keep_alive = false;
+   if ( con->request.version_int == 1001 )
+   {
+      con->is_keep_alive = true;
+      if ( connection_header_value != NULL &&
+           sand_string_view_has_substr( connection_header_value, "close" ) )
+      {
+         con->is_keep_alive = false;
+      }
+   }
+   else if ( con->request.version_int == 1000 )
+   {
+      con->is_keep_alive = false;
+      if ( connection_header_value != NULL &&
+           sand_string_view_has_substr( connection_header_value, "keep-alive" ) )
+      {
+         con->is_keep_alive = true;
       }
    }
 }
@@ -384,11 +426,55 @@ void server_handle_parsing_error( Connection_t* con, ParseResult_t result )
 //------------------------------------------------------------------------------
 void server_serialize_and_send_response( Connection_t* con )
 {
+   http_server_set_default_headers_for_response( con );
+   // @TODO
+   // HTTP/1.0 responses must echo "Connection: keep-alive" when the
+   // connection is being kept open. A 1.0 client treats a missing
+   // Connection header as "server is closing" and will not reuse the
+   // socket -- so the connection sits idle until the timer kills it.
+   // Also send "Connection: close" explicitly whenever is_keep_alive
+   // is false, so the client stops pipelining into a socket we are
+   // about to shut down.
    http_response_serialize( &con->response, &con->buf );
 
    send( con->fd, con->buf.data, con->buf.size, 0 );
    LOG_WARN( "Sending response buffer:\n%s\n", con->buf.data );
    sand_string_destroy( &con->buf );
+}
+
+//------------------------------------------------------------------------------
+void http_server_set_default_headers_for_response( Connection_t* con )
+{
+   // @TODO
+   // Keep-alive is computed here, but this function returns early when
+   // response.body == NULL (204, 304, and every error path that sets no
+   // body). Those responses never reach server_request_keep_alive_check,
+   // and connection_reset does not clear is_keep_alive -- so the flag
+   // carries over from the PREVIOUS request on this connection.
+   // Fix: compute is_keep_alive right after http_parser_parse_request
+   // succeeds (version + headers are both known there) and let the
+   // response path only read the flag, never set it.
+   if ( con->response.body == NULL )
+   {
+      sand_string_append( &con->buf, "Content-Length: 0\r\n\r\n" );
+      return;
+   }
+
+   // ============= BEGIN Settting default connection echo for http 1.0
+   // ============= Keep alive handling
+   server_request_keep_alive_check( con );
+   // ============= BEGIN Settting default connection echo for http 1.0
+   // =============
+
+   // ============= BEGIN Settting default content length =============
+   // Getting content-length size
+   char content_length[ 64 ];
+   int  body_len = strlen( con->response.body ) + 1;   // +1 for the "\n"
+
+   snprintf( content_length, sizeof( content_length ), "%d", body_len );
+
+   http_response_set_header( &con->response, "Content-Length", content_length );
+   // ============= END Settting default content length =============
 }
 
 //------------------------------------------------------------------------------

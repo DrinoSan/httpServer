@@ -55,6 +55,7 @@ typedef enum
 typedef struct
 {
    int32_t           fd;
+   int32_t           kqueueFd;
    char              buffer[ BUFFER_SIZE ];
    int32_t           bytes_read;
    int32_t           header_len;   // offset where body starts (after \r\n\r\n)
@@ -65,7 +66,12 @@ typedef struct
    Sand_string_t     buf;
    Sand_string_t     buf_for_error_405;
    int               methods_for_405_error;
+   bool              is_keep_alive;
 } Connection_t;
 
 Connection_t* connection_create_heap( int32_t fd );
 void          connection_destroy( Connection_t* con );
+
+void connection_reset( Connection_t* con );
+
+

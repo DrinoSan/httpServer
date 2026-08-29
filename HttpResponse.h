@@ -34,3 +34,9 @@ void http_response_set_header( HttpResponse_t* response, const char* name,
 /// @param status_code HTTP status code (e.g. 200, 404)
 /// @return interned reason phrase string
 const char* http_status_text( int status_code );
+
+// -----------------------------------------------------------------------------
+/// Function to reset the response headers
+/// Clearing reponse header names to 0
+/// Clearing respons header values to 0
+void http_response_reset_headers( HttpResponse_t* response );

@@ -8,14 +8,17 @@
 
 #define NUM_WORKERS 5
 
+//------------------------------------------------------------------------------
 typedef struct Server Server_t;
 
+//------------------------------------------------------------------------------
 typedef struct
 {
    int32_t   kqueue_fd;
    Server_t* server;
 } WorkerArgs_t;
 
+//------------------------------------------------------------------------------
 typedef struct Server
 {
    SocketHandler_t socketHandler;
@@ -26,15 +29,27 @@ typedef struct Server
    WorkerArgs_t    worker_args[ NUM_WORKERS ];
 } Server_t;
 
+//------------------------------------------------------------------------------
 void server_create( Server_t* server );
 
+//------------------------------------------------------------------------------
 void server_destroy( Server_t* server );
 
+//------------------------------------------------------------------------------
 // Main loop, receiving and dispatching connections
 void server_start( Server_t* server );
 
+//------------------------------------------------------------------------------
 void server_serve_static_files( Server_t* server, const char* file_path,
                                 const char* endpoint );
+
+//------------------------------------------------------------------------------
+void server_request_keep_alive_check( Connection_t* con );
+
+//------------------------------------------------------------------------------
+/// Function to set default headers for response
+/// Currently content-length and keep alive are set
+void http_server_set_default_headers_for_response( Connection_t* con );
 
 // For setting content type
 static const struct
