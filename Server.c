@@ -243,7 +243,12 @@ void* server_start_worker_event_loop( void* args )
                char* end = strstr( con->buffer, "\r\n\r\n" );
                if ( end == NULL )
                {
-                  // Did not receive the full headers
+                  // Did not receive the full headers. Setting timer just in
+                  // case i never get something back
+                  struct kevent timer;
+                  EV_SET( &timer, con->fd, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0,
+                          10000, con );
+                  kevent( kqueueFD, &timer, 1, NULL, 0, NULL );
                   continue;
                }
 
@@ -262,6 +267,10 @@ void* server_start_worker_event_loop( void* args )
                   continue;
                }
 
+               // Setting keep_alive flag depending on headers and/or http
+               // version
+               server_request_keep_alive_check( con );
+
                const sand_string_view_t* length_value_ptr =
                    http_request_find_header( &con->request, "content-length" );
 
@@ -270,7 +279,7 @@ void* server_start_worker_event_loop( void* args )
                                              "transfer-encoding" );
                // If no content_length provided we dont
                // need to check the body
-               if ( length_value_ptr != NULL || chunk_value_ptr != NULL )
+               if ( length_value_ptr != NULL )
                {
                   const char* length_value    = length_value_ptr->data;
                   con->request.content_length = atoi( length_value );
@@ -351,7 +360,8 @@ void server_request_keep_alive_check( Connection_t* con )
    {
       con->is_keep_alive = true;
       if ( connection_header_value != NULL &&
-           sand_string_view_has_substr( connection_header_value, "close" ) )
+           sand_string_view_has_substr_no_case( connection_header_value,
+                                                "close" ) )
       {
          con->is_keep_alive = false;
       }
@@ -360,7 +370,8 @@ void server_request_keep_alive_check( Connection_t* con )
    {
       con->is_keep_alive = false;
       if ( connection_header_value != NULL &&
-           sand_string_view_has_substr( connection_header_value, "keep-alive" ) )
+           sand_string_view_has_substr_no_case( connection_header_value,
+                                                "keep-alive" ) )
       {
          con->is_keep_alive = true;
       }
@@ -459,12 +470,6 @@ void http_server_set_default_headers_for_response( Connection_t* con )
       sand_string_append( &con->buf, "Content-Length: 0\r\n\r\n" );
       return;
    }
-
-   // ============= BEGIN Settting default connection echo for http 1.0
-   // ============= Keep alive handling
-   server_request_keep_alive_check( con );
-   // ============= BEGIN Settting default connection echo for http 1.0
-   // =============
 
    // ============= BEGIN Settting default content length =============
    // Getting content-length size
