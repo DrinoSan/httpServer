@@ -4,6 +4,7 @@
 #include "HttpRequest.h"
 
 // clang-format off
+// -----------------------------------------------------------------------------
 const char *sand_http_method_to_string(uint32_t method)
 {
     switch (method)
@@ -31,6 +32,7 @@ const char *sand_http_method_to_string(uint32_t method)
 }
 // clang-format on
 
+// -----------------------------------------------------------------------------
 const sand_string_view_t*
 http_request_find_header( const HttpRequest_t* request, const char* name )
 {
@@ -45,6 +47,7 @@ http_request_find_header( const HttpRequest_t* request, const char* name )
    return NULL;
 }
 
+// -----------------------------------------------------------------------------
 void http_request_showMe( const HttpRequest_t* request )
 {
    printf( "=== HttpRequest ===\n" );
@@ -74,4 +77,17 @@ void http_request_showMe( const HttpRequest_t* request )
               request->headers[ i ].value.data );
    }
    printf( "===================\n" );
+}
+
+// -----------------------------------------------------------------------------
+void http_request_reset_headers( HttpRequest_t* request )
+{
+   for( size_t i = 0; i < request->header_count; ++i )
+   {
+      HttpHeader_t* header = &request->headers[ i ];
+      memset( header->name, 0, MAX_HEADER_NAME_LEN );
+      sand_string_view_reset( &header->value );
+   }
+
+   request->header_count = 0;
 }

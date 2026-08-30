@@ -85,20 +85,6 @@ void http_response_serialize( HttpResponse_t* response, Sand_string_t* string )
 {
    http_response_serialize_status_line( response, string );
 
-   if ( response->body == NULL )
-   {
-      sand_string_append( string, "Content-Length: 0\r\n\r\n" );
-      return;
-   }
-
-   // Getting content-length size
-   char content_length[ 64 ];
-   int  body_len = strlen( response->body ) + 1;   // +1 for the "\n"
-
-   snprintf( content_length, sizeof( content_length ), "%d", body_len );
-
-   http_response_set_header( response, "Content-Length", content_length );
-
    for ( size_t i = 0; i < ( size_t ) response->header_count; i++ )
    {
       HttpResponseHeader_t* header = &response->headers[ i ];
@@ -128,4 +114,17 @@ void http_response_serialize_status_line( HttpResponse_t* response,
    sand_string_append( string, " " );
    sand_string_append( string, http_status_text( response->status_code ) );
    sand_string_append( string, " \r\n" );
+}
+
+//------------------------------------------------------------------------------
+void http_response_reset_headers( HttpResponse_t* response )
+{
+   for( size_t i = 0; i < ( size_t ) response->header_count; ++i )
+   {
+      HttpResponseHeader_t* header = &response->headers[ i ];
+      memset( header->name, 0, MAX_HEADER_NAME_LEN );
+      sand_string_clear( &header->value );
+   }
+
+   response->header_count = 0;
 }

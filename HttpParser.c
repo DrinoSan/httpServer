@@ -853,6 +853,7 @@ ParseResult_t http_parser_parse_request( char* buffer, int32_t header_len,
       int32_t name_len = colon - line;
       if ( name_len > MAX_HEADER_NAME_LEN )
       {
+         LOG_WARN( "Reached MAX_HEADER_NAME_LEN" );
          return PARSE_ERROR_HEADER_NAME_TOO_LONG;
       }
 
@@ -860,7 +861,8 @@ ParseResult_t http_parser_parse_request( char* buffer, int32_t header_len,
       {
          // I want to lowercase all header names only if they are actually
          // letters
-         char c = line[ i ] | 0x20;
+         char c = line[ i ] | 0x20;   // because this or every char also non
+                                      // letters we have the if else below
          if ( c >= 'a' && c <= 'z' )
          {
             request->headers[ idx ].name[ i ] = c;

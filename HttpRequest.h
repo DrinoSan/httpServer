@@ -42,7 +42,7 @@ typedef struct
    char         version[ 16 ];   // HTTP/1.1
    int32_t      version_int;     // For easier checking
    HttpHeader_t headers[ MAX_HEADERS ];
-   int32_t      header_count;
+   int32_t      header_count;    // Number of set headers
    int32_t      content_length;
    bool         ignore_content_length;   // Should be set if content-length and
                                          // transfer_encoding is set
@@ -77,5 +77,11 @@ typedef struct
 
 const sand_string_view_t*
 http_request_find_header( const HttpRequest_t* request, const char* name );
+
+// -----------------------------------------------------------------------------
+/// Function to reset the request headers
+/// Clearing reponse header names to 0
+/// Clearing respons header values to 0
+void http_request_reset_headers( HttpRequest_t* request );
 
 void http_request_showMe( const HttpRequest_t* request );
