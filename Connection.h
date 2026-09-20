@@ -73,5 +73,3 @@ Connection_t* connection_create_heap( int32_t fd );
 void          connection_destroy( Connection_t* con );
 
 void connection_reset( Connection_t* con );
-
-

@@ -49,7 +49,7 @@ void server_create( Server_t* server )
    socketHandler_create( &server->socketHandler, AF_INET, SOCK_STREAM, 0 );
 
    // Binding to socket and start listening
-   socketHandler_init( &server->socketHandler, "", 8080, 10 );
+   socketHandler_init( &server->socketHandler, "", 8080, 511 );
 
    server_setup_worker( server );
 }
@@ -96,6 +96,8 @@ void server_start( Server_t* server )
       server->next_worker = ( server->next_worker + 1 ) % NUM_WORKERS;
 
       connection->kqueueFd = server->worker_kqueue_fds[ worker_idx ];
+
+      LOG_INFO( "Got new Socket/client connection for socket %lu", connection->fd );
 
       // Registering the new client in our kqueue
       struct kevent change;
@@ -179,10 +181,6 @@ void* server_start_worker_event_loop( void* args )
          // Handle new client connection
          Connection_t* con = ( Connection_t* ) events[ i ].udata;
          // ident and con->fd is the same
-         LOG_INFO(
-             "Got new Socket/client connection for socket %lu udata fd %d",
-             events[ i ].ident, con->fd );
-
          if ( events[ i ].filter == EVFILT_TIMER )
          {
             // Timeout - Client sleeps or is bad. Timout register is done at
