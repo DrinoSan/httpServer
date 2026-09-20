@@ -188,14 +188,18 @@ void handle_405_method_path_no_match( Connection_t* con )
    con->response.body =
        "<h1>Sorry, the path you requested does not match with any method</h1>";
 
+   // Masking out all bits above CONNECTION
    unsigned int bits = con->methods_for_405_error & SAND_HTTP_ALL_METHODS;
    while ( bits )
    {
+      // The (-bits) is the Two's Complement - to get the negativ value of bits
+      // The & isolates the last bit so if GET is 1010 and -bits is 0110 then we get 0010 which is GET
       unsigned int method = bits & ( -bits );
 
       sand_string_append( &con->buf_for_error_405,
                           sand_http_method_to_string( method ) );
 
+      // Same as above but here we clear the last set bit
       bits &= bits - 1;
 
       if ( bits == 0 )

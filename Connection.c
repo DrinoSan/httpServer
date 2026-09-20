@@ -66,10 +66,11 @@ void connection_reset( Connection_t* con )
    sand_string_clear( &con->buf );
    sand_string_clear( &con->buf_for_error_405 );
 
-   con->state         = CONN_READING_HEADERS;
-   con->bytes_read    = 0;
-   con->header_len    = 0;
-   con->is_keep_alive = false;
+   con->state                 = CONN_READING_HEADERS;
+   con->bytes_read            = 0;
+   con->header_len            = 0;
+   con->is_keep_alive         = false;
+   con->methods_for_405_error = 0;
    memset( con->buffer, 0, BUFFER_SIZE );
 
    // Removing registered timer for connection

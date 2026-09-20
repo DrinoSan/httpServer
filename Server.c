@@ -97,7 +97,8 @@ void server_start( Server_t* server )
 
       connection->kqueueFd = server->worker_kqueue_fds[ worker_idx ];
 
-      LOG_INFO( "Got new Socket/client connection for socket %lu", connection->fd );
+      LOG_INFO( "Got new Socket/client connection for socket %lu",
+                connection->fd );
 
       // Registering the new client in our kqueue
       struct kevent change;
@@ -483,7 +484,7 @@ void http_server_set_default_headers_for_response( Connection_t* con )
 //------------------------------------------------------------------------------
 void server_serve_static_files_handler( Connection_t* con )
 {
-   LOG_WARN( "Called serving static files " );
+   LOG_INFO( "Called serving static files " );
 
    // parse prefix away, i only support single prefix meaning /static/home.html
    // is valid But /static/secondStatic/home.html would not be supported So now
@@ -497,7 +498,7 @@ void server_serve_static_files_handler( Connection_t* con )
    {
       if ( *c == '/' )
       {
-         c++;
+         c++;   // This is not c++
          break;
       }
    }
@@ -555,6 +556,10 @@ void server_serve_static_files_handler( Connection_t* con )
    if ( file.content.size == 0 )
    {
       LOG_WARN( "Could not open file" );
+      con->response.status_code = 404;
+      con->response.body =
+          "<h1>Sorry, the page you are asking for is not registered</h1>";
+      return;
    }
    else
    {
