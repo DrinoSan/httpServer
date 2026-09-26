@@ -23,7 +23,6 @@ void test_serialize_200_with_body( void )
    Sand_string_t str;
    sand_string_create( &str );
    http_response_serialize( &resp, &str );
-   server_serialize_and_send_response( &con );
 
    // body is "Hello" (5 chars) + "\n" (1 char) = 6
    TEST_ASSERT_NOT_NULL( strstr( str.data, "HTTP/1.1 200 OK \r\n" ) );

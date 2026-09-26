@@ -73,7 +73,7 @@ void connection_reset( Connection_t* con )
    con->methods_for_405_error = 0;
    memset( con->buffer, 0, BUFFER_SIZE );
 
-   // Removing registered timer for connection
+   // Re arm the timer. So the connection starts with a fresh timeout
    struct kevent timer;
    EV_SET( &timer, con->fd, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, 10000, con );
    kevent( con->kqueueFd, &timer, 1, NULL, 0, NULL );

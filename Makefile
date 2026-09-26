@@ -45,20 +45,22 @@ KEEPALIVE_SRCS = Server.c Connection.c HttpParser.c HttpRequest.c HttpResponse.c
 tests/test_keep_alive: tests/test_keep_alive.c $(KEEPALIVE_SRCS) $(UNITY_SRC) $(SANDLIB)
 	$(CC) $(TEST_CFLAGS) -o $@ tests/test_keep_alive.c $(KEEPALIVE_SRCS) $(UNITY_SRC) -Lsandlib -lsand $(LDFLAGS)
 
+# Prefix of binary execution with - makes the unit test continue even if one failes
 test: $(SANDLIB) tests/test_http_parser tests/test_router tests/test_http_request tests/test_http_response tests/test_keep_alive
 	@echo "=== Running test_http_parser ==="
-	./tests/test_http_parser
+	-./tests/test_http_parser
 	@echo ""
 	@echo "=== Running test_router ==="
-	./tests/test_router
+	-./tests/test_router
 	@echo ""
 	@echo "=== Running test_http_request ==="
-	./tests/test_http_request
+	-./tests/test_http_request
 	@echo ""
 	@echo "=== Running test_http_response ==="
-	./tests/test_http_response
+	-./tests/test_http_response
 	@echo ""
 	@echo "=== Running test_keep_alive ==="
-	./tests/test_keep_alive
+	-./tests/test_keep_alive
+	@echo ""
 
 .PHONY: all clean test

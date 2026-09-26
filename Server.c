@@ -106,6 +106,11 @@ void server_start( Server_t* server )
       kevent( server->worker_kqueue_fds[ worker_idx ], &change, 1, NULL, 0,
               NULL );
 
+      struct kevent timer;
+      EV_SET( &timer, clientFD, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0,
+              10000, connection );
+      kevent( server->worker_kqueue_fds[ worker_idx ], &timer, 1, NULL, 0, NULL );
+
       LOG_INFO( "Received Client Socket <%d> Adding it to KQueue of worker %d",
                 clientFD, worker_idx );
    }
