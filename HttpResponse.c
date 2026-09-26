@@ -83,6 +83,32 @@ void http_response_set_header( HttpResponse_t* response, const char* name,
 //------------------------------------------------------------------------------
 void http_response_serialize( HttpResponse_t* response, Sand_string_t* string )
 {
+   // @TODO
+   // Keep-alive is computed here, but this function returns early when
+   // response.body == NULL (204, 304, and every error path that sets no
+   // body). Those responses never reach server_request_keep_alive_check,
+   // and connection_reset does not clear is_keep_alive -- so the flag
+   // carries over from the PREVIOUS request on this connection.
+   // Fix: compute is_keep_alive right after http_parser_parse_request
+   // succeeds (version + headers are both known there) and let the
+   // response path only read the flag, never set it.
+   if ( response->body == NULL )
+   {
+      sand_string_append( string, "Content-Length: 0\r\n\r\n" );
+      return;
+   }
+
+   // ============= BEGIN Settting default content length =============
+   // Getting content-length size
+   char content_length[ 64 ];
+   int  body_len = strlen( response->body ) + 1;   // +1 for the "\n"
+
+   snprintf( content_length, sizeof( content_length ), "%d", body_len );
+
+   http_response_set_header( response, "Content-Length", content_length );
+   // ============= END Settting default content length =============
+
+
    http_response_serialize_status_line( response, string );
 
    for ( size_t i = 0; i < ( size_t ) response->header_count; i++ )

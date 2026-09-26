@@ -428,7 +428,8 @@ void server_handle_parsing_error( Connection_t* con, ParseResult_t result )
    }
    };
 
-   http_response_serialize( &con->response, &buf );
+   //http_response_serialize( &con->response, &buf );
+   server_serialize_and_send_response( con );
    send( con->fd, buf.data, buf.size, 0 );
    sand_string_destroy( &buf );
 }
@@ -436,7 +437,6 @@ void server_handle_parsing_error( Connection_t* con, ParseResult_t result )
 //------------------------------------------------------------------------------
 void server_serialize_and_send_response( Connection_t* con )
 {
-   http_server_set_default_headers_for_response( con );
    // @TODO
    // HTTP/1.0 responses must echo "Connection: keep-alive" when the
    // connection is being kept open. A 1.0 client treats a missing
@@ -450,35 +450,6 @@ void server_serialize_and_send_response( Connection_t* con )
    send( con->fd, con->buf.data, con->buf.size, 0 );
    LOG_WARN( "Sending response buffer:\n%s\n", con->buf.data );
    sand_string_destroy( &con->buf );
-}
-
-//------------------------------------------------------------------------------
-void http_server_set_default_headers_for_response( Connection_t* con )
-{
-   // @TODO
-   // Keep-alive is computed here, but this function returns early when
-   // response.body == NULL (204, 304, and every error path that sets no
-   // body). Those responses never reach server_request_keep_alive_check,
-   // and connection_reset does not clear is_keep_alive -- so the flag
-   // carries over from the PREVIOUS request on this connection.
-   // Fix: compute is_keep_alive right after http_parser_parse_request
-   // succeeds (version + headers are both known there) and let the
-   // response path only read the flag, never set it.
-   if ( con->response.body == NULL )
-   {
-      sand_string_append( &con->buf, "Content-Length: 0\r\n\r\n" );
-      return;
-   }
-
-   // ============= BEGIN Settting default content length =============
-   // Getting content-length size
-   char content_length[ 64 ];
-   int  body_len = strlen( con->response.body ) + 1;   // +1 for the "\n"
-
-   snprintf( content_length, sizeof( content_length ), "%d", body_len );
-
-   http_response_set_header( &con->response, "Content-Length", content_length );
-   // ============= END Settting default content length =============
 }
 
 //------------------------------------------------------------------------------
