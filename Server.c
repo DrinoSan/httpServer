@@ -533,8 +533,7 @@ void server_serve_static_files_handler( Connection_t* con )
    {
       LOG_WARN( "Could not open file" );
       con->response.status_code = 404;
-      con->response.body =
-          "<h1>Sorry, the page you are asking for is not registered</h1>";
+      http_response_set_body( &con->response, "<h1>Sorry, the page you are asking for is not registered</h1>" );
       return;
    }
    else
@@ -550,7 +549,7 @@ void server_serve_static_files_handler( Connection_t* con )
    }
 
    con->response.status_code = 200;
-   con->response.body        = file.content.data;
+   http_response_set_body( &con->response, file.content.data );
 }
 
 //------------------------------------------------------------------------------

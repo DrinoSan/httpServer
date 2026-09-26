@@ -523,7 +523,7 @@ void test_404_handler_has_body( void )
 
    handler( &con );
    TEST_ASSERT_EQUAL( 404, con.response.status_code );
-   TEST_ASSERT_NOT_NULL( con.response.body );
+   TEST_ASSERT_NOT_NULL( con.response.body.data );
    TEST_ASSERT_EQUAL_STRING( "Not Found", http_status_text( con.response.status_code ) );
 }
 

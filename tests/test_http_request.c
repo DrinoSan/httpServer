@@ -369,7 +369,7 @@ void test_keepalive_response_echoes_connection_close( void )
    Connection_t con = { 0 };
    con.response.status_code = 200;
 
-   con.response.body = "bye";
+   http_response_set_body( &con.response, "bye" );
 
    // Once implemented, the serializer should include Connection: close:
    // Sand_string_t str;

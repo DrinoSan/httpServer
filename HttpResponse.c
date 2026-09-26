@@ -92,7 +92,7 @@ void http_response_serialize( HttpResponse_t* response, Sand_string_t* string )
    // Fix: compute is_keep_alive right after http_parser_parse_request
    // succeeds (version + headers are both known there) and let the
    // response path only read the flag, never set it.
-   if ( response->body == NULL )
+   if ( response->body.size == 0 )
    {
       sand_string_append( string, "Content-Length: 0\r\n\r\n" );
       return;
@@ -101,9 +101,8 @@ void http_response_serialize( HttpResponse_t* response, Sand_string_t* string )
    // ============= BEGIN Settting default content length =============
    // Getting content-length size
    char content_length[ 64 ];
-   int  body_len = strlen( response->body ) + 1;   // +1 for the "\n"
 
-   snprintf( content_length, sizeof( content_length ), "%d", body_len );
+   snprintf( content_length, sizeof( content_length ), "%zu", response->body.size );
 
    http_response_set_header( response, "Content-Length", content_length );
    // ============= END Settting default content length =============
@@ -123,7 +122,7 @@ void http_response_serialize( HttpResponse_t* response, Sand_string_t* string )
    sand_string_append( string, "\r\n" );
 
    // sand_string_append( string, content_length );
-   sand_string_append( string, response->body );
+   sand_string_append_n( string, response->body.data, response->body.size );
    sand_string_append( string, "\n" );
 }
 
@@ -153,4 +152,10 @@ void http_response_reset_headers( HttpResponse_t* response )
    }
 
    response->header_count = 0;
+}
+
+//------------------------------------------------------------------------------
+void http_response_set_body( HttpResponse_t* response, const char* string )
+{
+   sand_string_view_set( &response->body, string );
 }

@@ -9,8 +9,9 @@ typedef struct
    int32_t              status_code;
    HttpResponseHeader_t headers[ MAX_HEADERS ];
    int32_t              header_count;
-   char*                body;
-   int32_t              body_len;
+   sand_string_view_t     body;
+   //char*                body;
+   //int32_t              body_len;
 } HttpResponse_t;
 
 // -----------------------------------------------------------------------------
@@ -40,3 +41,9 @@ const char* http_status_text( int status_code );
 /// Clearing reponse header names to 0
 /// Clearing respons header values to 0
 void http_response_reset_headers( HttpResponse_t* response );
+
+// -----------------------------------------------------------------------------
+/// Function to set the response body
+/// @param response holding the body
+/// @param const char* which will be set to
+void http_response_set_body( HttpResponse_t* response, const char* string );

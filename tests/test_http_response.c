@@ -18,7 +18,8 @@ void test_serialize_200_with_body( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "Hello";
+   http_response_set_body( &resp, "Hello" );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -38,7 +39,8 @@ void test_serialize_404_with_body( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 404;
 
-   resp.body = "<h1>Not Found</h1>";
+   http_response_set_body( &resp, "<h1>Not Found</h1>" );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -56,7 +58,8 @@ void test_serialize_null_body( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 204;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -73,7 +76,8 @@ void test_status_line_format( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -94,7 +98,8 @@ void test_http11_response_includes_date_header( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "hello";
+   http_response_set_body( &resp, "hello" );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -115,7 +120,8 @@ void test_http11_response_includes_server_header( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "hello";
+   http_response_set_body( &resp, "hello" );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -135,7 +141,8 @@ void test_http11_response_includes_content_type( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "<h1>Hello</h1>";
+   http_response_set_body( &resp, "<h1>Hello</h1>" );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -155,7 +162,7 @@ void test_http11_head_response_no_body( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "<h1>Hello</h1>";   // body exists for Content-Length calculation
+   http_response_set_body( &resp, "<h1>Hello</h1>" );   // body exists for Content-Length calculation
 
    // Once a head-aware serialize is implemented:
    // Sand_string_t str;
@@ -175,7 +182,8 @@ void test_http11_response_connection_close( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "bye";
+   http_response_set_body( &resp, "bye" );
+
    // Set a Connection: close header on the response
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Connection" );
@@ -199,7 +207,8 @@ void test_http11_serialize_custom_headers( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "test";
+   http_response_set_body( &resp, "test" );
+
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "X-Custom" );
    SET_SV( resp.headers[ 0 ].value, "my-value" );
@@ -224,7 +233,8 @@ void test_http11_chunked_response( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "Hello, World!";
+   http_response_set_body( &resp, "Hello, World!" );
+
 
    // Once implemented, a chunked serializer would produce:
    // "HTTP/1.1 200 OK \r\n"
@@ -249,7 +259,8 @@ void test_http11_100_continue_response( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 100;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -271,7 +282,8 @@ void test_http11_201_created_response( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 201;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
    // Location header pointing to the new resource
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Location" );
@@ -296,7 +308,8 @@ void test_http11_204_no_content_no_body( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 204;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -319,7 +332,8 @@ void test_http11_301_redirect( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 301;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Location" );
    SET_SV( resp.headers[ 0 ].value, "https://example.com/new-path" );
@@ -343,7 +357,8 @@ void test_http11_302_redirect( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 302;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Location" );
    SET_SV( resp.headers[ 0 ].value, "/login" );
@@ -367,7 +382,8 @@ void test_http11_400_bad_request( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 400;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -385,7 +401,8 @@ void test_http11_405_method_not_allowed_response( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 405;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Allow" );
    SET_SV( resp.headers[ 0 ].value, "GET, HEAD" );
@@ -409,7 +426,8 @@ void test_http11_411_length_required_response( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 411;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -427,7 +445,8 @@ void test_http11_413_payload_too_large_response( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 413;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -445,7 +464,8 @@ void test_http11_414_uri_too_long_response( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 414;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -463,7 +483,8 @@ void test_http11_500_internal_server_error( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 500;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -481,7 +502,8 @@ void test_http11_501_not_implemented_response( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 501;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -499,7 +521,8 @@ void test_http11_505_version_not_supported_response( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 505;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -519,7 +542,7 @@ void test_content_length_accuracy_short_body( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "A";   // 1 char + 1 for "\n" = 2
+   http_response_set_body( &resp, "A" );   // 1 char + 1 for "\n" = 2
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -536,7 +559,7 @@ void test_content_length_accuracy_medium_body( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "Hello, World!";   // 13 chars + 1 = 14
+   http_response_set_body( &resp, "Hello, World!" );   // 13 chars + 1 = 14
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -554,7 +577,8 @@ void test_serialize_html_body( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "<html><body><h1>Welcome</h1><p>Hello!</p></body></html>";
+   http_response_set_body( &resp, "<html><body><h1>Welcome</h1><p>Hello!</p></body></html>" );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -573,7 +597,8 @@ void test_serialize_json_body( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "{\"status\":\"ok\",\"count\":42}";
+   http_response_set_body( &resp, "{\"status\":\"ok\",\"count\":42}" );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -592,7 +617,7 @@ void test_serialize_empty_string_body( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "";   // empty but not NULL — strlen = 0, +1 = 1
+   http_response_set_body( &resp, "" );   // empty but not NULL — strlen = 0, +1 = 1
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -610,7 +635,8 @@ void test_status_line_ends_with_crlf( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -629,7 +655,8 @@ void test_serialize_403_forbidden( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 403;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -647,7 +674,8 @@ void test_serialize_503_service_unavailable( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 503;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -670,7 +698,7 @@ void test_serialize_long_body_content_length( void )
    char body[ 101 ];
    memset( body, 'A', 100 );
    body[ 100 ] = '\0';
-   resp.body = body;   // 100 + 1 = 101
+   http_response_set_body( &resp, body );   // 100 + 1 = 101
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -688,7 +716,8 @@ void test_null_body_no_trailing_content( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -713,7 +742,8 @@ void test_response_starts_with_http_version( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -731,7 +761,8 @@ void test_serialize_429_too_many_requests( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 429;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
 
    Sand_string_t str;
    sand_string_create( &str );
@@ -756,7 +787,8 @@ void test_bug_custom_headers_not_serialized( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "{\"ok\":true}";
+   http_response_set_body( &resp, "{\"ok\":true}" );
+
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Content-Type" );
    SET_SV( resp.headers[ 0 ].value, "application/json" );
@@ -778,7 +810,8 @@ void test_bug_content_type_header_not_in_output( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 301;
 
-   resp.body = NULL;
+   http_response_set_body( &resp, NULL );
+
    resp.header_count = 1;
    strcpy( resp.headers[ 0 ].name, "Location" );
    SET_SV( resp.headers[ 0 ].value, "/new-path" );
@@ -800,7 +833,8 @@ void test_bug_multiple_custom_headers_not_serialized( void )
    HttpResponse_t resp = { 0 };
    resp.status_code = 200;
 
-   resp.body = "hello";
+   http_response_set_body( &resp, "hello" );
+
    resp.header_count = 2;
    strcpy( resp.headers[ 0 ].name, "X-Request-Id" );
    SET_SV( resp.headers[ 0 ].value, "abc-123" );

@@ -177,23 +177,22 @@ RouteHandler_t router_find_route( Router_t* router, HttpRequest_t* request,
 void handle_404_not_found( Connection_t* con )
 {
    con->response.status_code = 404;
-   con->response.body =
-       "<h1>Sorry, the page you are asking for is not registered</h1>";
+   http_response_set_body( &con->response, "<h1>Sorry, the page you are asking for is not registered</h1>" );
 }
 
 //------------------------------------------------------------------------------
 void handle_405_method_path_no_match( Connection_t* con )
 {
    con->response.status_code = 405;
-   con->response.body =
-       "<h1>Sorry, the path you requested does not match with any method</h1>";
+   http_response_set_body( &con->response, "<h1>Sorry, the page you are asking for is not registered</h1>" );
 
    // Masking out all bits above CONNECTION
    unsigned int bits = con->methods_for_405_error & SAND_HTTP_ALL_METHODS;
    while ( bits )
    {
       // The (-bits) is the Two's Complement - to get the negativ value of bits
-      // The & isolates the last bit so if GET is 1010 and -bits is 0110 then we get 0010 which is GET
+      // The & isolates the last bit so if GET is 1010 and -bits is 0110 then we
+      // get 0010 which is GET
       unsigned int method = bits & ( -bits );
 
       sand_string_append( &con->buf_for_error_405,
@@ -218,6 +217,5 @@ void handle_405_method_path_no_match( Connection_t* con )
 void handle_501_unsupported_method( Connection_t* con )
 {
    con->response.status_code = 501;
-   con->response.body =
-       "<h1>Sorry, the method you requested is not supported</h1>";
+   http_response_set_body( &con->response, "<h1>Sorry, the method you requested is not supported</h1>" );
 }

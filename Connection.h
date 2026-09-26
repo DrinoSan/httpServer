@@ -18,6 +18,7 @@ typedef enum
    CONN_SENDING_RESPONSE
 } ConnectionState_t;
 
+// clang-format off
 //------------------------------------------------------------------------------
 // Ownership model:
 //
@@ -28,18 +29,18 @@ typedef enum
 // Memory layout:
 //
 //   Connection_t  (heap, single owner: one worker thread)
-//   ├── fd                 socket file descriptor, closed by
-//   connection_destroy() ├── buffer[8192]       inline, dies with Connection_t
+//   ├── fd                 socket file descriptor, closed by connection_destroy()
+//   ├── buffer[8192]       inline, dies with Connection_t
 //   │   └── HttpRequest_t.uri_view      ──> string view INTO buffer (no copy)
-//   │   └── HttpRequest_t.headers[].value ──> string views INTO buffer (no
-//   copy) │   └── HttpRequest_t.body          ──> pointer INTO buffer (no copy)
+//   │   └── HttpRequest_t.headers[].value ──> string views INTO buffer (no copy)
+//   │   └── HttpRequest_t.body          ──> pointer INTO buffer (no copy)
 //   ├── HttpRequest_t      inline, zero-copy views into buffer above
 //   │   └── headers[].name              ──> copied + lowercased (owns the data)
 //   ├── HttpResponse_t     inline
-//   │   └── body                        ──> external pointer (typically string
-//   literal, NOT owned) │   └── headers[].name              ──> copied by
-//   caller (owns the data) │   └── headers[].value             ──> sand_string,
-//   owns the data └── buf (Sand_string_t)             ──> heap data via
+//   │   └── body                        ──> external pointer (typically string literal, NOT owned)
+//   │   └── headers[].name              ──> copied by caller (owns the data)
+//   │   └── headers[].value             ──> sand_string, owns the data
+//   └── buf (Sand_string_t)             ──> heap data via
 //   sand_string_create()
 //                                           freed by connection_destroy()
 //
@@ -52,6 +53,7 @@ typedef enum
 // - sand_string_destroy() sets data=NULL, so double-destroy is safe (not a
 // crash, just redundant)
 //
+// clang-format on
 typedef struct
 {
    int32_t           fd;
